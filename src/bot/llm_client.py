@@ -1,4 +1,7 @@
+import logging
 from openai import OpenAI
+
+logger = logging.getLogger(__name__)
 
 
 class LLMClient:
@@ -9,6 +12,7 @@ class LLMClient:
         )
         self.model = model
         self.system_prompt = system_prompt
+        logger.info(f"LLMClient initialized with model: {model}")
     
     def get_response(self, messages: list) -> str:
         """
@@ -25,10 +29,20 @@ class LLMClient:
             {"role": "system", "content": self.system_prompt}
         ] + messages
         
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=full_messages
-        )
+        logger.info(f"Sending request to LLM: model={self.model}, messages_count={len(messages)}")
         
-        return response.choices[0].message.content
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=full_messages
+            )
+            
+            response_text = response.choices[0].message.content
+            logger.info(f"Received response from LLM: length={len(response_text)} chars")
+            
+            return response_text
+            
+        except Exception as e:
+            logger.error(f"Error getting response from LLM: {e}", exc_info=True)
+            raise
 

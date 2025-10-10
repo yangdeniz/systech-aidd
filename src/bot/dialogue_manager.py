@@ -1,7 +1,13 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 class DialogueManager:
     def __init__(self, max_history: int):
         self.dialogues = {}  # {user_id: [messages]}
         self.max_history = max_history
+        logger.info(f"DialogueManager initialized with max_history={max_history}")
     
     def add_message(self, user_id: int, role: str, content: str):
         """
@@ -14,15 +20,20 @@ class DialogueManager:
         """
         if user_id not in self.dialogues:
             self.dialogues[user_id] = []
+            logger.info(f"Created new dialogue for user {user_id}")
         
         self.dialogues[user_id].append({
             "role": role,
             "content": content
         })
         
+        current_length = len(self.dialogues[user_id])
+        logger.debug(f"Added {role} message for user {user_id}, history size: {current_length}")
+        
         # Ограничиваем историю
-        if len(self.dialogues[user_id]) > self.max_history:
+        if current_length > self.max_history:
             self.dialogues[user_id] = self.dialogues[user_id][-self.max_history:]
+            logger.info(f"Truncated history for user {user_id} to {self.max_history} messages")
     
     def get_history(self, user_id: int) -> list:
         """
@@ -44,5 +55,7 @@ class DialogueManager:
             user_id: ID пользователя
         """
         if user_id in self.dialogues:
+            messages_count = len(self.dialogues[user_id])
             self.dialogues[user_id] = []
+            logger.info(f"Cleared history for user {user_id} ({messages_count} messages removed)")
 
