@@ -153,7 +153,7 @@ class DialogueManager:
 - Никаких дополнительных полей (timestamp, id и т.д.)
 
 ### Ограничения для MVP
-- Максимум последних N сообщений на пользователя (например, 10)
+- Максимум последних 10 пар вопрос-ответ (20 сообщений) на пользователя
 - Простое усечение старых сообщений при превышении лимита
 
 ---
@@ -254,7 +254,7 @@ OPENROUTER_MODEL=anthropic/claude-3.5-sonnet
 SYSTEM_PROMPT=Ты полезный AI-ассистент, который помогает пользователям...
 
 # Dialogue Settings
-MAX_HISTORY_MESSAGES=10
+MAX_HISTORY_MESSAGES=20
 ```
 
 ### Класс Config
@@ -270,7 +270,7 @@ class Config:
         self.openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
         self.openrouter_model = os.getenv("OPENROUTER_MODEL")
         self.system_prompt = os.getenv("SYSTEM_PROMPT")
-        self.max_history = int(os.getenv("MAX_HISTORY_MESSAGES", "10"))
+        self.max_history = int(os.getenv("MAX_HISTORY_MESSAGES", "20"))
 ```
 
 ### Особенности
