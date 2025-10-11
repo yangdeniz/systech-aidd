@@ -1,0 +1,500 @@
+---
+alwaysApply: true
+---
+
+# QA Testing Conventions
+
+> Компактные правила тестирования для TDD-подхода. Тестируем только основной функционал, избегаем boilerplate.
+
+## Принципы
+
+**KISS + DRY:**
+- 1 тест = 1 поведение/сценарий
+- Тест должен быть понятен без комментариев
+- Если можно проще — сделай проще
+- Повторяющаяся логика → в фикстуры (conftest.py)
+
+**Что тестировать:**
+- ✅ Основной функционал (happy path)
+- ✅ Критичные edge cases (None, пустые данные, границы)
+- ✅ Обработка ошибок (где есть try-except)
+- ❌ Геттеры/сеттеры без логики
+- ❌ Trivial code (pass-through методы)
+- ❌ Приватные методы напрямую
+
+**TDD workflow:**
+1. Red: пиши падающий тест для нового функционала
+2. Green: реализуй минимум кода для прохождения
+3. Refactor: улучши код, тесты остаются зелеными
+
+## Структура тестов
+
+**Naming:** `test_<action>_<scenario>`
+```python
+# ✅ Хорошо
+def test_add_message():  # Главный сценарий
+def test_add_message_exceeds_limit():  # Edge case
+def test_get_history_empty():  # Граничный случай
+
+# ❌ Плохо
+def test_add_message_to_dialogue_manager_when_user_sends_text():  # Избыточно
+def test_01():  # Непонятно
+```
+
+**Arrange-Act-Assert (AAA):**
+```python
+def test_clear_history():
+    # Arrange - подготовка
+    dm = DialogueManager(max_history=20)
+    dm.add_message(123, "user", "Hello")
+    
+    # Act - действие
+    dm.clear_history(123)
+    
+    # Assert - проверка
+    assert dm.get_history(123) == []
+```
+
+**Одна проверка = один assert** (если возможно):
+```python
+# ✅ Фокус на одном поведении
+def test_add_message():
+    dm = DialogueManager(max_history=20)
+    dm.add_message(123, "user", "Hello")
+    
+    assert len(dm.get_history(123)) == 1
+
+# ❌ Слишком много проверок в одном тесте
+def test_dialogue_manager():
+    dm = DialogueManager(max_history=20)
+    # 10+ assertions...
+```
+
+## Фикстуры
+
+**conftest.py для переиспользования:**
+```python
+@pytest.fixture
+def dialogue_manager() -> DialogueStorage:
+    return DialogueManager(max_history=20)
+
+@pytest.fixture
+def mock_llm_client() -> LLMProvider:
+    mock = Mock(spec=LLMProvider)  # spec=Protocol
+    mock.get_response.return_value = "Test response"
+    return mock
+```
+
+**Правила фикстур:**
+- Используй для общих зависимостей (моки, хэлперы)
+- Не создавай фикстуры для разового использования
+- Типизируй возвращаемые значения
+- spec= для моков (Protocol или класс)
+
+## Моки и изоляция
+
+**Мокируй только внешние зависимости:**
+```python
+# ✅ Мокируем внешний сервис
+@pytest.fixture
+def mock_llm_client() -> LLMProvider:
+    mock = Mock(spec=LLMProvider)
+    return mock
+
+# ❌ Не мокируем свой код без причины
+def test_dialogue_manager():
+    dm = Mock(spec=DialogueManager)  # НЕТ! Тестируй реальный класс
+```
+
+**Async моки для async кода:**
+```python
+@pytest.fixture
+def mock_message() -> AsyncMock:
+    message = AsyncMock()
+    message.from_user = Mock()
+    message.from_user.id = 12345
+    message.answer = AsyncMock()
+    return message
+
+@pytest.mark.asyncio
+async def test_cmd_start(mock_message):
+    await bot.cmd_start(mock_message)
+    mock_message.answer.assert_called_once()
+```
+
+## Edge cases и ошибки
+
+**Тестируй граничные условия:**
+```python
+# Пустые данные
+def test_get_history_empty():
+    assert dm.get_history(999) == []
+
+# Границы (max_history)
+def test_max_history_limit():
+    dm = DialogueManager(max_history=3)
+    for i in range(5):
+        dm.add_message(123, "user", f"Msg {i}")
+    assert len(dm.get_history(123)) == 3
+
+# None values
+async def test_cmd_start_no_user(mock_message):
+    mock_message.from_user = None
+    await bot.cmd_start(mock_message)
+    mock_message.answer.assert_not_called()
+```
+
+**Ошибки и исключения:**
+```python
+# Где есть обработка ошибок - тестируй их
+async def test_handle_message_error(mock_llm_client):
+    mock_llm_client.get_response.side_effect = Exception("LLM Error")
+    await bot.handle_message(mock_message)
+    
+    args = mock_message.answer.call_args[0]
+    assert "ошибка" in args[0].lower()
+```
+
+## Type hints в тестах
+
+**Обязательны для фикстур:**
+```python
+# ✅ Правильно
+@pytest.fixture
+def dialogue_manager() -> DialogueStorage:
+    return DialogueManager(max_history=20)
+
+# ❌ Неправильно
+@pytest.fixture
+def dialogue_manager():  # Без типа
+    return DialogueManager(max_history=20)
+```
+
+**Опциональны для test функций** (Mypy игнорирует test_*)
+
+## Coverage
+
+**Цель: ≥ 80%** - но без бессмысленных тестов!
+
+**Игнорируй в coverage:**
+```python
+# pyproject.toml
+[tool.coverage.run]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/conftest.py"
+]
+```
+
+**Проверка:**
+```bash
+make test  # pytest --cov=src --cov-report=term-missing
+```
+
+**Не гонись за 100%** - лучше 80% значимых тестов, чем 100% с тестами геттеров.
+
+## Что НЕ делать
+
+❌ Не тестировать геттеры/сеттеры без логики
+❌ Не писать тесты для coverage ради coverage
+❌ Не мокировать тестируемый код
+❌ Не создавать сложные test helpers (храни в conftest.py)
+❌ Не дублировать логику фикстур
+❌ Не тестировать implementation details (приватные методы)
+❌ Не делать mega-тесты с 10+ assertions
+
+## Команды
+
+```bash
+make test          # Запуск тестов с coverage
+make quality       # Полная проверка (format, lint, typecheck, test)
+pytest tests/      # Все тесты
+pytest tests/test_bot.py::test_cmd_start  # Один тест
+pytest -v          # Verbose output
+pytest --cov-report=html  # HTML отчет
+```
+
+## Чек-лист для теста
+
+✅ Понятно что тестируется? (имя теста)  
+✅ Одно поведение = один тест?  
+✅ AAA структура соблюдена?  
+✅ Моки только для внешних зависимостей?  
+✅ Edge cases покрыты?  
+✅ Тест изолирован (не зависит от других)?  
+✅ Тест детерминирован (всегда один результат)?  
+✅ Быстрый (< 1 сек для unit теста)?  
+
+## TDD в action
+
+```python
+# 1. RED: пишем тест для нового функционала
+def test_dialogue_manager_limits_messages():
+    dm = DialogueManager(max_history=3)
+    for i in range(5):
+        dm.add_message(123, "user", f"Msg {i}")
+    
+    assert len(dm.get_history(123)) == 3  # FAILS - функционал не реализован
+
+# 2. GREEN: минимальная реализация
+class DialogueManager:
+    def add_message(self, user_id, role, content):
+        # ... добавляем логику ограничения
+        if len(self.dialogues[user_id]) > self.max_history:
+            self.dialogues[user_id] = self.dialogues[user_id][-self.max_history:]
+
+# 3. REFACTOR: улучшаем код, тесты зеленые
+```
+
+---
+
+**Помни:** Качество тестов важнее количества. 50 значимых тестов > 200 boilerplate тестов.
+# QA Testing Conventions
+
+> Компактные правила тестирования для TDD-подхода. Тестируем только основной функционал, избегаем boilerplate.
+
+## Принципы
+
+**KISS + DRY:**
+- 1 тест = 1 поведение/сценарий
+- Тест должен быть понятен без комментариев
+- Если можно проще — сделай проще
+- Повторяющаяся логика → в фикстуры (conftest.py)
+
+**Что тестировать:**
+- ✅ Основной функционал (happy path)
+- ✅ Критичные edge cases (None, пустые данные, границы)
+- ✅ Обработка ошибок (где есть try-except)
+- ❌ Геттеры/сеттеры без логики
+- ❌ Trivial code (pass-through методы)
+- ❌ Приватные методы напрямую
+
+**TDD workflow:**
+1. Red: пиши падающий тест для нового функционала
+2. Green: реализуй минимум кода для прохождения
+3. Refactor: улучши код, тесты остаются зелеными
+
+## Структура тестов
+
+**Naming:** `test_<action>_<scenario>`
+```python
+# ✅ Хорошо
+def test_add_message():  # Главный сценарий
+def test_add_message_exceeds_limit():  # Edge case
+def test_get_history_empty():  # Граничный случай
+
+# ❌ Плохо
+def test_add_message_to_dialogue_manager_when_user_sends_text():  # Избыточно
+def test_01():  # Непонятно
+```
+
+**Arrange-Act-Assert (AAA):**
+```python
+def test_clear_history():
+    # Arrange - подготовка
+    dm = DialogueManager(max_history=20)
+    dm.add_message(123, "user", "Hello")
+    
+    # Act - действие
+    dm.clear_history(123)
+    
+    # Assert - проверка
+    assert dm.get_history(123) == []
+```
+
+**Одна проверка = один assert** (если возможно):
+```python
+# ✅ Фокус на одном поведении
+def test_add_message():
+    dm = DialogueManager(max_history=20)
+    dm.add_message(123, "user", "Hello")
+    
+    assert len(dm.get_history(123)) == 1
+
+# ❌ Слишком много проверок в одном тесте
+def test_dialogue_manager():
+    dm = DialogueManager(max_history=20)
+    # 10+ assertions...
+```
+
+## Фикстуры
+
+**conftest.py для переиспользования:**
+```python
+@pytest.fixture
+def dialogue_manager() -> DialogueStorage:
+    return DialogueManager(max_history=20)
+
+@pytest.fixture
+def mock_llm_client() -> LLMProvider:
+    mock = Mock(spec=LLMProvider)  # spec=Protocol
+    mock.get_response.return_value = "Test response"
+    return mock
+```
+
+**Правила фикстур:**
+- Используй для общих зависимостей (моки, хэлперы)
+- Не создавай фикстуры для разового использования
+- Типизируй возвращаемые значения
+- spec= для моков (Protocol или класс)
+
+## Моки и изоляция
+
+**Мокируй только внешние зависимости:**
+```python
+# ✅ Мокируем внешний сервис
+@pytest.fixture
+def mock_llm_client() -> LLMProvider:
+    mock = Mock(spec=LLMProvider)
+    return mock
+
+# ❌ Не мокируем свой код без причины
+def test_dialogue_manager():
+    dm = Mock(spec=DialogueManager)  # НЕТ! Тестируй реальный класс
+```
+
+**Async моки для async кода:**
+```python
+@pytest.fixture
+def mock_message() -> AsyncMock:
+    message = AsyncMock()
+    message.from_user = Mock()
+    message.from_user.id = 12345
+    message.answer = AsyncMock()
+    return message
+
+@pytest.mark.asyncio
+async def test_cmd_start(mock_message):
+    await bot.cmd_start(mock_message)
+    mock_message.answer.assert_called_once()
+```
+
+## Edge cases и ошибки
+
+**Тестируй граничные условия:**
+```python
+# Пустые данные
+def test_get_history_empty():
+    assert dm.get_history(999) == []
+
+# Границы (max_history)
+def test_max_history_limit():
+    dm = DialogueManager(max_history=3)
+    for i in range(5):
+        dm.add_message(123, "user", f"Msg {i}")
+    assert len(dm.get_history(123)) == 3
+
+# None values
+async def test_cmd_start_no_user(mock_message):
+    mock_message.from_user = None
+    await bot.cmd_start(mock_message)
+    mock_message.answer.assert_not_called()
+```
+
+**Ошибки и исключения:**
+```python
+# Где есть обработка ошибок - тестируй их
+async def test_handle_message_error(mock_llm_client):
+    mock_llm_client.get_response.side_effect = Exception("LLM Error")
+    await bot.handle_message(mock_message)
+    
+    args = mock_message.answer.call_args[0]
+    assert "ошибка" in args[0].lower()
+```
+
+## Type hints в тестах
+
+**Обязательны для фикстур:**
+```python
+# ✅ Правильно
+@pytest.fixture
+def dialogue_manager() -> DialogueStorage:
+    return DialogueManager(max_history=20)
+
+# ❌ Неправильно
+@pytest.fixture
+def dialogue_manager():  # Без типа
+    return DialogueManager(max_history=20)
+```
+
+**Опциональны для test функций** (Mypy игнорирует test_*)
+
+## Coverage
+
+**Цель: ≥ 80%** - но без бессмысленных тестов!
+
+**Игнорируй в coverage:**
+```python
+# pyproject.toml
+[tool.coverage.run]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/conftest.py"
+]
+```
+
+**Проверка:**
+```bash
+make test  # pytest --cov=src --cov-report=term-missing
+```
+
+**Не гонись за 100%** - лучше 80% значимых тестов, чем 100% с тестами геттеров.
+
+## Что НЕ делать
+
+❌ Не тестировать геттеры/сеттеры без логики
+❌ Не писать тесты для coverage ради coverage
+❌ Не мокировать тестируемый код
+❌ Не создавать сложные test helpers (храни в conftest.py)
+❌ Не дублировать логику фикстур
+❌ Не тестировать implementation details (приватные методы)
+❌ Не делать mega-тесты с 10+ assertions
+
+## Команды
+
+```bash
+make test          # Запуск тестов с coverage
+make quality       # Полная проверка (format, lint, typecheck, test)
+pytest tests/      # Все тесты
+pytest tests/test_bot.py::test_cmd_start  # Один тест
+pytest -v          # Verbose output
+pytest --cov-report=html  # HTML отчет
+```
+
+## Чек-лист для теста
+
+✅ Понятно что тестируется? (имя теста)  
+✅ Одно поведение = один тест?  
+✅ AAA структура соблюдена?  
+✅ Моки только для внешних зависимостей?  
+✅ Edge cases покрыты?  
+✅ Тест изолирован (не зависит от других)?  
+✅ Тест детерминирован (всегда один результат)?  
+✅ Быстрый (< 1 сек для unit теста)?  
+
+## TDD в action
+
+```python
+# 1. RED: пишем тест для нового функционала
+def test_dialogue_manager_limits_messages():
+    dm = DialogueManager(max_history=3)
+    for i in range(5):
+        dm.add_message(123, "user", f"Msg {i}")
+    
+    assert len(dm.get_history(123)) == 3  # FAILS - функционал не реализован
+
+# 2. GREEN: минимальная реализация
+class DialogueManager:
+    def add_message(self, user_id, role, content):
+        # ... добавляем логику ограничения
+        if len(self.dialogues[user_id]) > self.max_history:
+            self.dialogues[user_id] = self.dialogues[user_id][-self.max_history:]
+
+# 3. REFACTOR: улучшаем код, тесты зеленые
+```
+
+---
+
+**Помни:** Качество тестов важнее количества. 50 значимых тестов > 200 boilerplate тестов.
