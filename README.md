@@ -170,7 +170,7 @@ HomeGuru специализируется на дизайне интерьеро
 | Итерация | Задача | Статус |
 |----------|--------|--------|
 | 1-5 | Базовая функциональность (бот + LLM + диалоги + логирование) | ✅ Завершено |
-| 6 | Системный промпт HomeGuru | ⏳ В планах |
+| 6 | Системный промпт HomeGuru | ✅ Завершено |
 | 7 | Обработка фотографий (Vision API) | ⏳ В планах |
 | 8 | Обработка аудио (Speech-to-Text) | ⏳ В планах |
 | 9 | Мониторинг LangSmith | ⏳ В планах |
@@ -188,7 +188,7 @@ HomeGuru специализируется на дизайне интерьеро
 - ✅ Test Coverage: **98%** (цель ≥80%)
 - ✅ Mypy Strict: **0 errors**
 - ✅ Ruff: **All checks passed**
-- ✅ Tests: **27 passed**
+- ✅ Tests: **34 passed**
 
 Подробный план см. в [`docs/tasklist.md`](docs/tasklist.md) и [`docs/tasklist_tech_debt.md`](docs/tasklist_tech_debt.md)  
 Отчет о выполненных улучшениях см. в [`docs/tech_debt_report.md`](docs/tech_debt_report.md)

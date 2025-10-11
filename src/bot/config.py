@@ -1,5 +1,6 @@
 import logging
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -41,7 +42,7 @@ class Config:
         Returns:
             Содержимое файла или дефолтный промпт при ошибке
         """
-        prompt_file = "src/bot/system_prompt.txt"
+        prompt_file = Path(__file__).parent / "system_prompt.txt"
         try:
             with open(prompt_file, encoding="utf-8") as f:
                 prompt = f.read().strip()
