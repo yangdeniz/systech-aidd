@@ -4,7 +4,7 @@ install:
 	uv sync --all-extras
 
 run:
-	uv run python src/bot/main.py
+	uv run python -m src.bot.main
 
 format:
 	uv run ruff format src tests
