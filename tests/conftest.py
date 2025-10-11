@@ -2,8 +2,10 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
+from src.bot.command_handler import CommandHandler
 from src.bot.dialogue_manager import DialogueManager
 from src.bot.interfaces import DialogueStorage, LLMProvider
+from src.bot.message_handler import MessageHandler
 
 
 @pytest.fixture
@@ -18,6 +20,20 @@ def mock_llm_client() -> LLMProvider:
     mock = Mock(spec=LLMProvider)
     mock.get_response.return_value = "Test response from LLM"
     return mock
+
+
+@pytest.fixture
+def message_handler(
+    mock_llm_client: LLMProvider, dialogue_manager: DialogueStorage
+) -> MessageHandler:
+    """Создает MessageHandler для тестов"""
+    return MessageHandler(mock_llm_client, dialogue_manager)
+
+
+@pytest.fixture
+def command_handler(dialogue_manager: DialogueStorage) -> CommandHandler:
+    """Создает CommandHandler для тестов"""
+    return CommandHandler(dialogue_manager)
 
 
 @pytest.fixture

@@ -4,24 +4,40 @@ from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
 from aiogram.types import Message
 
-from .interfaces import DialogueStorage, LLMProvider
+from .command_handler import CommandHandler
+from .message_handler import MessageHandler
 
 logger = logging.getLogger(__name__)
 
 
 class TelegramBot:
+    """
+    Telegram бот - отвечает только за инфраструктуру aiogram.
+
+    Делегирует обработку команд в CommandHandler,
+    обработку сообщений в MessageHandler.
+    """
+
     bot: Bot
     dp: Dispatcher
-    llm_client: LLMProvider
-    dialogue_manager: DialogueStorage
+    message_handler: MessageHandler
+    command_handler: CommandHandler
 
     def __init__(
-        self, token: str, llm_client: LLMProvider, dialogue_manager: DialogueStorage
+        self, token: str, message_handler: MessageHandler, command_handler: CommandHandler
     ) -> None:
+        """
+        Инициализация Telegram бота.
+
+        Args:
+            token: Токен Telegram бота
+            message_handler: Обработчик пользовательских сообщений
+            command_handler: Обработчик команд бота
+        """
         self.bot = Bot(token=token)
         self.dp = Dispatcher()
-        self.llm_client = llm_client
-        self.dialogue_manager = dialogue_manager
+        self.message_handler = message_handler
+        self.command_handler = command_handler
         self._register_handlers()
         logger.info("TelegramBot instance created")
 
@@ -32,6 +48,7 @@ class TelegramBot:
         self.dp.message()(self.handle_message)
 
     async def cmd_start(self, message: Message) -> None:
+        """Обработать команду /start."""
         if message.from_user is None:
             return
 
@@ -39,18 +56,11 @@ class TelegramBot:
         username = message.from_user.username or "unknown"
         logger.info(f"User {user_id} (@{username}) executed /start command")
 
-        await message.answer(
-            "👋 Привет! Я AI-ассистент на базе LLM.\n\n"
-            "Я могу помочь тебе с различными вопросами, "
-            "вести диалог и помнить контекст нашей беседы.\n\n"
-            "📝 Доступные команды:\n"
-            "/start - показать это сообщение\n"
-            "/help - справка о командах\n"
-            "/reset - очистить историю диалога\n\n"
-            "Просто напиши мне свой вопрос!"
-        )
+        response = self.command_handler.get_start_message()
+        await message.answer(response)
 
     async def cmd_help(self, message: Message) -> None:
+        """Обработать команду /help."""
         if message.from_user is None:
             return
 
@@ -58,18 +68,11 @@ class TelegramBot:
         username = message.from_user.username or "unknown"
         logger.info(f"User {user_id} (@{username}) executed /help command")
 
-        await message.answer(
-            "ℹ️ Справка по командам:\n\n"
-            "/start - приветственное сообщение\n"
-            "/help - это сообщение со справкой\n"
-            "/reset - очистить историю нашего диалога\n\n"
-            "💡 Как пользоваться:\n"
-            "Просто отправь мне текстовое сообщение с вопросом, "
-            "и я постараюсь на него ответить. Я помню контекст "
-            "нашего диалога (до 20 последних сообщений)."
-        )
+        response = self.command_handler.get_help_message()
+        await message.answer(response)
 
     async def cmd_reset(self, message: Message) -> None:
+        """Обработать команду /reset."""
         if message.from_user is None:
             return
 
@@ -77,36 +80,23 @@ class TelegramBot:
         username = message.from_user.username or "unknown"
         logger.info(f"User {user_id} (@{username}) executed /reset command")
 
-        self.dialogue_manager.clear_history(user_id)
-
-        await message.answer("✅ История диалога очищена!\n\nТеперь можешь начать новый разговор.")
+        response = self.command_handler.reset_dialogue(user_id)
+        await message.answer(response)
 
     async def handle_message(self, message: Message) -> None:
+        """Обработать пользовательское сообщение."""
         if message.from_user is None or message.text is None:
             return
 
         user_id = message.from_user.id
         username = message.from_user.username or "unknown"
 
-        logger.info(f"Received message from user {user_id} (@{username}): {message.text[:50]}...")
-
         try:
-            # Добавляем сообщение пользователя в историю
-            self.dialogue_manager.add_message(user_id, "user", message.text)
-
-            # Получаем историю диалога
-            history = self.dialogue_manager.get_history(user_id)
-
-            # Получаем ответ от LLM с учетом истории
-            logger.info(f"Requesting LLM response for user {user_id}")
-            response = self.llm_client.get_response(history)
-
-            # Добавляем ответ ассистента в историю
-            self.dialogue_manager.add_message(user_id, "assistant", response)
-
-            # Отправляем ответ пользователю
+            # Делегируем обработку в MessageHandler
+            response = await self.message_handler.handle_user_message(
+                user_id, username, message.text
+            )
             await message.answer(response)
-            logger.info(f"Sent response to user {user_id}: {response[:50]}...")
 
         except Exception as e:
             logger.error(f"Error handling message from user {user_id}: {e}", exc_info=True)

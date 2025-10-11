@@ -2,9 +2,11 @@ import asyncio
 import logging
 
 from .bot import TelegramBot
+from .command_handler import CommandHandler
 from .config import Config
 from .dialogue_manager import DialogueManager
 from .llm_client import LLMClient
+from .message_handler import MessageHandler
 
 
 def setup_logging() -> None:
@@ -56,8 +58,15 @@ async def main() -> None:
     dialogue_manager = DialogueManager(max_history=config.max_history)
     logging.info(f"Dialogue manager initialized with max_history={config.max_history}")
 
+    # Создаем обработчики
+    message_handler = MessageHandler(llm_client, dialogue_manager)
+    logging.info("MessageHandler initialized")
+
+    command_handler = CommandHandler(dialogue_manager)
+    logging.info("CommandHandler initialized")
+
     # Создаем бота
-    telegram_bot = TelegramBot(config.telegram_token, llm_client, dialogue_manager)
+    telegram_bot = TelegramBot(config.telegram_token, message_handler, command_handler)
     logging.info("Telegram bot initialized")
 
     logging.info("Bot is starting polling...")
