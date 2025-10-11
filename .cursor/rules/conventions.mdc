@@ -1,5 +1,5 @@
 ---
-alwaysApply: true
+alwaysApply: false
 ---
 # Coding Conventions
 
@@ -14,8 +14,8 @@ alwaysApply: true
 
 ### 2. Никакого оверинжиниринга
 - Не решаем проблемы, которых еще нет
-- Минимум абстракций
-- Один модуль = одна ответственность
+- Минимум абстракций (Protocol только для ключевых зависимостей)
+- Один модуль = одна ответственность (SRP)
 
 ### 3. Структура кода
 - **1 класс = 1 файл** (обязательно)
@@ -32,44 +32,253 @@ alwaysApply: true
 
 ### Python
 - Python 3.11+
-- Типы данных используем, но не педантично
+- **Type hints обязательны** - все параметры, возвращаемые значения, атрибуты
 - Стандартная библиотека предпочтительнее внешних зависимостей
+- Используем современный синтаксис: `list[str]`, `dict[int, str]` вместо `List[str]`, `Dict[int, str]`
+
+### Качество кода
+
+**Автоматические инструменты:**
+- **Ruff** - форматтер + линтер (заменяет Black + Flake8 + isort)
+- **Mypy** - статическая проверка типов (strict mode)
+- **Pytest** - тестирование с coverage ≥80%
+
+**Обязательные проверки:**
+```bash
+make format    # Автоформатирование кода
+make lint      # Проверка стиля и потенциальных ошибок
+make typecheck # Проверка типов (mypy --strict)
+make test      # Тесты + coverage
+make quality   # Все проверки вместе
+```
+
+### Type Hints
+
+**Обязательно типизировать:**
+```python
+# ✅ Правильно
+class Config:
+    telegram_token: str
+    max_history: int
+    
+    def __init__(self) -> None:
+        self.telegram_token = os.getenv("TELEGRAM_BOT_TOKEN")
+        if not self.telegram_token:
+            raise ValueError("TELEGRAM_BOT_TOKEN is required")
+    
+    def get_value(self, key: str) -> str | None:
+        return os.getenv(key)
+
+def process_message(user_id: int, text: str) -> list[dict[str, str]]:
+    return [{"role": "user", "content": text}]
+
+# ❌ Неправильно - без типов
+def process_message(user_id, text):
+    return [{"role": "user", "content": text}]
+```
+
+### SOLID Principles (разумное применение)
+
+**Dependency Inversion (Protocol):**
+```python
+# interfaces.py
+from typing import Protocol
+
+class LLMProvider(Protocol):
+    def get_response(self, messages: list[dict[str, str]]) -> str: ...
+
+# bot.py
+class TelegramBot:
+    def __init__(self, llm: LLMProvider):  # Зависимость от абстракции
+        self.llm = llm
+```
+
+**Single Responsibility:**
+- `TelegramBot` - только инфраструктура Telegram
+- `MessageHandler` - бизнес-логика обработки сообщений
+- `CommandHandler` - обработка команд
 
 ### Логирование
 - Стандартный `logging` (не сторонние библиотеки)
 - Уровни: INFO для событий, ERROR для ошибок
+- Логи с контекстом: `logger.info(f"User {user_id}: {action}")`
 - Логи в файл + консоль
 
 ### Конфигурация
 - Все настройки через .env
 - **Исключение**: системный промпт HomeGuru хранится в файле `system_prompt.txt`
 - Один класс Config для загрузки (переменные окружения + промпт из файла)
-- Без валидации в MVP (fail fast)
+- **Валидация обязательных параметров** в `__init__` через `ValueError`
 
 ### Обработка ошибок
-- В MVP - минимальная обработка
-- Логируем ошибки через logger.error()
+- Валидация обязательных параметров в конструкторах
+- Логируем ошибки через `logger.error()` с `exc_info=True`
 - Не перехватываем исключения без явной необходимости
+
+### Тестирование
+
+**Структура:**
+- 1 тестовый файл на 1 модуль: `test_<module>.py`
+- Общие фикстуры в `tests/conftest.py`
+- Моки для внешних зависимостей (API, файлы)
+
+**Требования:**
+- Все новые модули покрыты тестами
+- Coverage ≥ 80%
+- Используем `pytest-asyncio` для async кода
+- Именование: `def test_<что_тестируется>():`
+
+**Пример:**
+```python
+# conftest.py
+@pytest.fixture
+def dialogue_manager() -> DialogueManager:
+    return DialogueManager(max_history=20)
+
+# test_dialogue_manager.py
+def test_add_message(dialogue_manager):
+    dialogue_manager.add_message(123, "user", "Hello")
+    history = dialogue_manager.get_history(123)
+    assert len(history) == 1
+    assert history[0]["role"] == "user"
+```
+
+## Форматирование кода (Ruff)
+
+**Автоматически применяется:**
+- Длина строки: 100 символов
+- Сортировка импортов (isort)
+- Удаление неиспользуемых импортов
+- Единый стиль кавычек, отступов
+- PEP 8 compliant
+
+**Использование:**
+```bash
+make format  # Автоформатирование всего кода
+```
+
+## Линтинг (Ruff)
+
+**Проверяемые правила:**
+- E, F - PEP 8, Pyflakes
+- I - сортировка импортов
+- N - именование (PEP 8)
+- UP - современный Python синтаксис
+- B - потенциальные баги (bugbear)
+- C4 - упрощение comprehensions
+- SIM - упрощение кода
+
+**Использование:**
+```bash
+make lint  # Проверка + автоисправление
+```
+
+## Лучшие практики Python
+
+### 1. Protocol вместо ABC
+```python
+# ✅ Используем Protocol (проще, pythonic)
+from typing import Protocol
+
+class Storage(Protocol):
+    def save(self, data: str) -> None: ...
+
+# ❌ Не используем ABC без необходимости
+from abc import ABC, abstractmethod
+
+class Storage(ABC):
+    @abstractmethod
+    def save(self, data: str) -> None: ...
+```
+
+### 2. Современный синтаксис типов
+```python
+# ✅ Python 3.11+
+def get_items() -> list[str]:
+    return ["item1", "item2"]
+
+data: dict[int, str] = {1: "one"}
+
+# ❌ Устаревший синтаксис
+from typing import List, Dict
+
+def get_items() -> List[str]:
+    return ["item1", "item2"]
+```
+
+### 3. Валидация в конструкторах
+```python
+# ✅ Fail fast с четкими сообщениями
+class Config:
+    def __init__(self) -> None:
+        self.token = os.getenv("TOKEN")
+        if not self.token:
+            raise ValueError("TOKEN is required in .env")
+
+# ❌ Молчаливый None
+class Config:
+    def __init__(self):
+        self.token = os.getenv("TOKEN")  # Может быть None
+```
+
+### 4. Логирование с контекстом
+```python
+# ✅ С контекстом
+logger.info(f"User {user_id} (@{username}): received message: {text[:50]}")
+logger.error(f"Failed to process message from {user_id}: {e}", exc_info=True)
+
+# ❌ Без контекста
+logger.info("Message received")
+logger.error("Error occurred")
+```
+
+### 5. Async/await для IO
+```python
+# ✅ Асинхронные операции
+async def handle_message(self, message: Message) -> None:
+    response = await self.process(message.text)
+    await message.answer(response)
+
+# ❌ Блокирующие вызовы в async коде
+async def handle_message(self, message: Message):
+    response = self.process(message.text)  # Блокирует event loop
+```
 
 ## Что НЕ делать
 
 ❌ Не создавать вложенные пакеты и модули  
-❌ Не использовать сложные паттерны проектирования  
+❌ Не использовать сложные паттерны без необходимости  
 ❌ Не добавлять функционал "на будущее"  
-❌ Не использовать базы данных  
-❌ Не делать асинхронную обработку диалогов  
-❌ Не писать избыточную документацию  
-❌ Не создавать дополнительные слои абстракции  
+❌ Не использовать базы данных в MVP  
+❌ Не писать код без type hints  
+❌ Не коммитить без прохождения `make quality`  
+❌ Не писать код без тестов  
+❌ Не создавать дополнительные слои абстракции без явной пользы  
 
 ## Чек-лист перед коммитом
 
+### Автоматические проверки
+✅ `make format` - код отформатирован  
+✅ `make lint` - линтер пройден (0 errors)  
+✅ `make typecheck` - mypy strict пройден  
+✅ `make test` - все тесты проходят  
+✅ Coverage ≥ 80%  
+
+### Ручная проверка
 ✅ 1 класс = 1 файл?  
 ✅ Код понятен без комментариев?  
 ✅ Можно было сделать проще?  
-✅ Добавлены только необходимые зависимости?  
+✅ Все методы типизированы?  
+✅ Новый код покрыт тестами?  
 ✅ Есть базовые логи для отладки?  
+✅ Следует SOLID принципам разумно?  
 
 ---
 
-**Помни**: Если сомневаешься — выбирай более простое решение.
+**Помни**: 
+1. Простота важнее "правильной" архитектуры
+2. Type hints помогают понять код, но не должны его усложнять
+3. Автоматизация (Ruff, Mypy) освобождает от ручного контроля
+4. Тесты дают уверенность в изменениях
+5. Если сомневаешься — выбирай более простое решение
 
