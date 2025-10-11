@@ -25,12 +25,25 @@
 - Синхронная обработка (один пользователь = один диалог)
 - Никаких дополнительных фич "на будущее"
 
+### 5. Type Safety
+- **Type hints обязательны** для всех методов и атрибутов
+- Mypy в strict mode (0 ошибок)
+- Типизация помогает понять код без документации
+- Проверка `Optional` типов (например, `message.from_user is None`)
+
+### 6. SOLID (разумно)
+- **Single Responsibility (SRP)** - каждый класс имеет одну ответственность
+- **Dependency Inversion (DIP)** - Protocol для ключевых зависимостей
+- Не применяем избыточно - только там, где дает реальную пользу
+- Protocol проще чем ABC - используем Protocol
+
 ## Технические требования
 
 ### Python
 - Python 3.11+
-- Типы данных используем, но не педантично
+- **Type hints обязательны** - все методы типизированы
 - Стандартная библиотека предпочтительнее внешних зависимостей
+- Modern Python syntax (PEP 585: `list[str]` вместо `List[str]`)
 
 ### Логирование
 - Стандартный `logging` (не сторонние библиотеки)
@@ -47,6 +60,74 @@
 - В MVP - минимальная обработка
 - Логируем ошибки через logger.error()
 - Не перехватываем исключения без явной необходимости
+- Валидация обязательных параметров (raise ValueError если None)
+
+### Качество кода
+
+**Инструменты (обязательны):**
+- **Ruff** - форматтер и линтер (заменяет Black + Flake8 + isort)
+- **Mypy** - статическая проверка типов (strict mode)
+- **Pytest** - тестирование с покрытием (pytest-cov, pytest-asyncio)
+
+**Требования:**
+- Test Coverage ≥ 80%
+- Mypy strict mode: 0 errors
+- Ruff: 0 critical errors
+- Line length: ≤ 100 символов
+
+**Команды проверки:**
+```bash
+make format     # Автоформатирование
+make lint       # Проверка стиля
+make typecheck  # Проверка типов
+make test       # Тесты с покрытием
+make quality    # Все проверки вместе
+```
+
+**Type Hints - примеры:**
+```python
+# ✅ Правильно
+def get_history(self, user_id: int) -> list[dict[str, str]]:
+    return self.dialogues.get(user_id, [])
+
+# ❌ Неправильно
+def get_history(self, user_id):
+    return self.dialogues.get(user_id, [])
+```
+
+**Protocol для DIP:**
+```python
+# ✅ Правильно - зависимость от абстракции
+from typing import Protocol
+
+class LLMProvider(Protocol):
+    def get_response(self, messages: list[dict[str, str]]) -> str: ...
+
+class MessageHandler:
+    def __init__(self, llm: LLMProvider):  # Protocol тип
+        self.llm = llm
+
+# ❌ Неправильно - зависимость от конкретного класса
+class MessageHandler:
+    def __init__(self, llm: LLMClient):  # Конкретный класс
+        self.llm = llm
+```
+
+**Single Responsibility:**
+```python
+# ✅ Правильно - разделение ответственностей
+class TelegramBot:  # Только инфраструктура
+    def __init__(self, handler: MessageHandler):
+        self.handler = handler
+
+class MessageHandler:  # Только бизнес-логика
+    def process(self, text: str) -> str:
+        return response
+
+# ❌ Неправильно - множественные ответственности
+class TelegramBot:
+    # И инфраструктура, И бизнес-логика, И команды - слишком много!
+```
 
 ## Что НЕ делать
 
@@ -60,11 +141,26 @@
 
 ## Чек-лист перед коммитом
 
-✅ 1 класс = 1 файл?  
-✅ Код понятен без комментариев?  
-✅ Можно было сделать проще?  
-✅ Добавлены только необходимые зависимости?  
-✅ Есть базовые логи для отладки?  
+**Автоматические проверки:**
+- [ ] `make format` - пройдено
+- [ ] `make lint` - 0 errors
+- [ ] `make typecheck` - success (mypy strict)
+- [ ] `make test` - все тесты проходят
+- [ ] Coverage ≥ 80%
+
+**Ручная проверка:**
+- [ ] 1 класс = 1 файл?
+- [ ] Код понятен без комментариев?
+- [ ] Можно было сделать проще?
+- [ ] Все методы типизированы?
+- [ ] Новый код покрыт тестами?
+- [ ] Логирование добавлено?
+- [ ] SOLID применен разумно?
+
+**Перед коммитом - запусти:**
+```bash
+make quality  # Все проверки сразу
+```  
 
 ---
 
