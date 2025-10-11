@@ -4,7 +4,7 @@ from src.bot.bot import TelegramBot
 
 
 @pytest.mark.asyncio
-async def test_bot_initialization(mock_bot_token, message_handler, command_handler):
+async def test_bot_initialization(mock_bot_token, message_handler, command_handler) -> None:
     """Тест инициализации TelegramBot"""
     bot = TelegramBot(mock_bot_token, message_handler, command_handler)
 
@@ -15,7 +15,7 @@ async def test_bot_initialization(mock_bot_token, message_handler, command_handl
 
 
 @pytest.mark.asyncio
-async def test_cmd_start(mock_bot_token, message_handler, command_handler, mock_message):
+async def test_cmd_start(mock_bot_token, message_handler, command_handler, mock_message) -> None:
     """Тест команды /start"""
     bot = TelegramBot(mock_bot_token, message_handler, command_handler)
 
@@ -23,11 +23,11 @@ async def test_cmd_start(mock_bot_token, message_handler, command_handler, mock_
 
     mock_message.answer.assert_called_once()
     args = mock_message.answer.call_args[0]
-    assert "AI-ассистент" in args[0]
+    assert "HomeGuru" in args[0]
 
 
 @pytest.mark.asyncio
-async def test_cmd_help(mock_bot_token, message_handler, command_handler, mock_message):
+async def test_cmd_help(mock_bot_token, message_handler, command_handler, mock_message) -> None:
     """Тест команды /help"""
     bot = TelegramBot(mock_bot_token, message_handler, command_handler)
 
@@ -39,9 +39,22 @@ async def test_cmd_help(mock_bot_token, message_handler, command_handler, mock_m
 
 
 @pytest.mark.asyncio
+async def test_cmd_role(mock_bot_token, message_handler, command_handler, mock_message) -> None:
+    """Тест команды /role"""
+    bot = TelegramBot(mock_bot_token, message_handler, command_handler)
+
+    await bot.cmd_role(mock_message)
+
+    mock_message.answer.assert_called_once()
+    args = mock_message.answer.call_args[0]
+    assert "HomeGuru" in args[0]
+    assert "дизайн" in args[0] or "интерьер" in args[0]
+
+
+@pytest.mark.asyncio
 async def test_cmd_reset(
     mock_bot_token, message_handler, command_handler, dialogue_manager, mock_message
-):
+) -> None:
     """Тест команды /reset"""
     bot = TelegramBot(mock_bot_token, message_handler, command_handler)
 
@@ -64,7 +77,7 @@ async def test_handle_message_success(
     dialogue_manager,
     mock_llm_client,
     mock_message,
-):
+) -> None:
     """Тест успешной обработки сообщения"""
     bot = TelegramBot(mock_bot_token, message_handler, command_handler)
 
@@ -84,7 +97,7 @@ async def test_handle_message_success(
 @pytest.mark.asyncio
 async def test_handle_message_error(
     mock_bot_token, mock_llm_client, message_handler, command_handler, mock_message
-):
+) -> None:
     """Тест обработки ошибки при обработке сообщения"""
     # Заставляем LLM выбросить ошибку
     mock_llm_client.get_response.side_effect = Exception("LLM Error")
@@ -100,7 +113,9 @@ async def test_handle_message_error(
 
 
 @pytest.mark.asyncio
-async def test_cmd_start_no_user(mock_bot_token, message_handler, command_handler, mock_message):
+async def test_cmd_start_no_user(
+    mock_bot_token, message_handler, command_handler, mock_message
+) -> None:
     """Тест команды /start без пользователя"""
     bot = TelegramBot(mock_bot_token, message_handler, command_handler)
     mock_message.from_user = None
@@ -114,7 +129,7 @@ async def test_cmd_start_no_user(mock_bot_token, message_handler, command_handle
 @pytest.mark.asyncio
 async def test_handle_message_no_text(
     mock_bot_token, message_handler, command_handler, mock_message
-):
+) -> None:
     """Тест обработки сообщения без текста"""
     bot = TelegramBot(mock_bot_token, message_handler, command_handler)
     mock_message.text = None

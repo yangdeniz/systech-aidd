@@ -43,6 +43,7 @@ class TelegramBot:
 
     def _register_handlers(self) -> None:
         self.dp.message(Command("start"))(self.cmd_start)
+        self.dp.message(Command("role"))(self.cmd_role)
         self.dp.message(Command("help"))(self.cmd_help)
         self.dp.message(Command("reset"))(self.cmd_reset)
         self.dp.message()(self.handle_message)
@@ -57,6 +58,18 @@ class TelegramBot:
         logger.info(f"User {user_id} (@{username}) executed /start command")
 
         response = self.command_handler.get_start_message()
+        await message.answer(response)
+
+    async def cmd_role(self, message: Message) -> None:
+        """Обработать команду /role."""
+        if message.from_user is None:
+            return
+
+        user_id = message.from_user.id
+        username = message.from_user.username or "unknown"
+        logger.info(f"User {user_id} (@{username}) executed /role command")
+
+        response = self.command_handler.get_role_message()
         await message.answer(response)
 
     async def cmd_help(self, message: Message) -> None:

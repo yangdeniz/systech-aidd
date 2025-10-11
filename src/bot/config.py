@@ -1,6 +1,9 @@
+import logging
 import os
 
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 
 class Config:
@@ -28,5 +31,25 @@ class Config:
             raise ValueError("OPENROUTER_MODEL is required in .env")
         self.openrouter_model = openrouter_model
 
-        self.system_prompt = os.getenv("SYSTEM_PROMPT", "You are a helpful assistant.")
+        self.system_prompt = self._load_system_prompt_from_file()
         self.max_history = int(os.getenv("MAX_HISTORY_MESSAGES", "20"))
+
+    def _load_system_prompt_from_file(self) -> str:
+        """
+        Загрузить системный промпт из файла system_prompt.txt.
+
+        Returns:
+            Содержимое файла или дефолтный промпт при ошибке
+        """
+        prompt_file = "src/bot/system_prompt.txt"
+        try:
+            with open(prompt_file, encoding="utf-8") as f:
+                prompt = f.read().strip()
+                if not prompt:
+                    logger.warning(f"System prompt file is empty: {prompt_file}. Using default.")
+                    return "You are a helpful assistant."
+                logger.info(f"System prompt loaded from {prompt_file}")
+                return prompt
+        except FileNotFoundError:
+            logger.warning(f"System prompt file not found: {prompt_file}. Using default.")
+            return "You are a helpful assistant."
