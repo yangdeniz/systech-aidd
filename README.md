@@ -57,14 +57,18 @@ HomeGuru — это MVP (Minimum Viable Product) Telegram-бота, которы
 
 Подробная документация проекта находится в директории `docs/`:
 
+**Основные документы:**
 - [`docs/idea.md`](docs/idea.md) - концепция HomeGuru и основные идеи
 - [`docs/vision.md`](docs/vision.md) - техническое видение и детальная спецификация
 - [`docs/tasklist.md`](docs/tasklist.md) - пошаговый план разработки и текущий прогресс
 - [`docs/tasklist_tech_debt.md`](docs/tasklist_tech_debt.md) - план улучшения качества кода (завершено)
-- [`docs/tech_debt_report.md`](docs/tech_debt_report.md) - отчет о выполненных улучшениях качества
 - [`docs/conventions.md`](docs/conventions.md) - соглашения и принципы разработки
 - [`docs/workflow.md`](docs/workflow.md) - процесс выполнения работ
-- [`docs/addrs/ADR-01.md`](docs/addrs/ADR-01.md) - архитектурное решение о минималистичной архитектуре
+
+**Подпапки:**
+- [`docs/reports/`](docs/reports/) - отчеты о выполненных работах (tech debt)
+- [`docs/reviews/`](docs/reviews/) - результаты code review проекта
+- [`docs/addrs/`](docs/addrs/) - архитектурные решения (Architecture Decision Records)
 
 ## ⚙️ Установка и запуск
 
@@ -103,7 +107,7 @@ HomeGuru — это MVP (Minimum Viable Product) Telegram-бота, которы
    
    # OpenRouter (мультимодальная модель)
    OPENROUTER_API_KEY=ваш_openrouter_ключ
-   OPENROUTER_MODEL=anthropic/claude-3.5-sonnet
+   OPENROUTER_MODEL=<мультимодальная-модель>
    
    # LangSmith (опционально, для мониторинга)
    LANGSMITH_API_KEY=ваш_langsmith_ключ
@@ -191,7 +195,7 @@ HomeGuru специализируется на дизайне интерьеро
 - ✅ Tests: **34 passed**
 
 Подробный план см. в [`docs/tasklist.md`](docs/tasklist.md) и [`docs/tasklist_tech_debt.md`](docs/tasklist_tech_debt.md)  
-Отчет о выполненных улучшениях см. в [`docs/tech_debt_report.md`](docs/tech_debt_report.md)
+Отчет о выполненных улучшениях см. в [`docs/reports/tech_debt_report.md`](docs/reports/tech_debt_report.md)
 
 ## 📄 Лицензия
 

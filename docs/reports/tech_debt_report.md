@@ -471,9 +471,13 @@ docs/
 ├── idea.md                 # Идея проекта
 ├── tasklist.md             # План разработки
 ├── tasklist_tech_debt.md   # План Tech Debt
-├── tech_debt_report.md     # ЭТОТ ОТЧЁТ [NEW]
+├── reports/
+│   └── tech_debt_report.md # Отчёт по устранению Tech Debt [NEW]
+├── reviews/
+│   └── review-001.md       # Code review отчёты
 ├── vision.md               # Техническое видение
-└── workflow.md             # Процесс разработки
+├── workflow.md             # Процесс разработки
+└── workflow_tech_debt.md   # Процесс устранения Tech Debt
 ```
 
 ---

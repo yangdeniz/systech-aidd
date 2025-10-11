@@ -55,7 +55,7 @@
 
 ### Организация файлов и директорий
 
-> **Примечание:** Структура показана в целевом состоянии после выполнения Tech Debt итераций (TD-4, TD-5). Текущее состояние MVP (итерации 1-5) содержит 6 базовых модулей без interfaces.py, message_handler.py, command_handler.py.
+> **Примечание:** Структура отражает текущее состояние после завершения итераций 1-6 и Tech Debt TD-1 до TD-5 (обновлено 2025-10-11).
 
 ```
 systech-aidd/
@@ -64,12 +64,12 @@ systech-aidd/
 │       ├── __init__.py
 │       ├── main.py              # Точка входа
 │       ├── bot.py               # TelegramBot класс (инфраструктура)
-│       ├── message_handler.py   # MessageHandler класс (бизнес-логика) [после TD-5]
-│       ├── command_handler.py   # CommandHandler класс (команды) [после TD-5]
+│       ├── message_handler.py   # MessageHandler класс (бизнес-логика) 
+│       ├── command_handler.py   # CommandHandler класс (команды)
 │       ├── llm_client.py        # LLMClient класс (мультимодальный)
 │       ├── dialogue_manager.py  # DialogueManager класс
 │       ├── config.py            # Config класс
-│       ├── interfaces.py        # Protocol интерфейсы (DIP) [после TD-4]
+│       ├── interfaces.py        # Protocol интерфейсы (DIP)
 │       ├── media_processor.py   # MediaProcessor класс (фото/аудио)
 │       └── system_prompt.txt    # Системный промпт HomeGuru
 ├── tests/
@@ -90,8 +90,9 @@ systech-aidd/
 │   ├── conventions.md           # Соглашения
 │   ├── workflow.md              # Процесс работы
 │   ├── workflow_tech_debt.md    # Процесс для Tech Debt
-│   └── addrs/
-│       └── ADR-01.md            # Архитектурное решение
+│   ├── reports/                 # Отчеты о выполненных работах
+│   ├── reviews/                 # Результаты code review
+│   └── addrs/                   # Архитектурные решения (ADR)
 ├── .env                         # Переменные окружения (не в git)
 ├── .env.example                 # Пример .env файла
 ├── .gitignore
@@ -102,27 +103,28 @@ systech-aidd/
 
 ### Описание модулей
 
-**Текущее состояние (после Tech Debt TD-1 до TD-5):**
+**Текущее состояние (после итераций 1-6 и Tech Debt TD-1 до TD-5):**
 - **main.py** - точка входа, запуск приложения, создание компонентов
 - **bot.py** - инфраструктура Telegram (aiogram), делегирование в handlers
-- **message_handler.py** - бизнес-логика обработки сообщений ✅ [TD-5]
-- **command_handler.py** - обработка команд бота (/start, /reset, /help) ✅ [TD-5]
+- **message_handler.py** - бизнес-логика обработки сообщений
+- **command_handler.py** - обработка команд бота (/start, /reset, /help, /role)
 - **llm_client.py** - работа с мультимодальными моделями через OpenRouter
 - **dialogue_manager.py** - управление контекстом диалогов (in-memory)
 - **config.py** - загрузка конфигурации из .env с валидацией
-- **interfaces.py** - Protocol интерфейсы (LLMProvider, DialogueStorage) ✅ [TD-4]
+- **interfaces.py** - Protocol интерфейсы (LLMProvider, DialogueStorage)
+- **system_prompt.txt** - системный промпт с ролью HomeGuru (ИИ-дизайнер)
 
-**В разработке (итерации 6-9):**
+**В разработке (итерации 7-9):**
 - **media_processor.py** - обработка изображений и аудио (загрузка, конвертация) [итерации 7-8]
-- **system_prompt.txt** - системный промпт с ролью HomeGuru (ИИ-дизайнер) [итерация 6]
+- **langsmith интеграция** - мониторинг LLM запросов через декораторы [итерация 9]
 
 ### Принципы организации
 - 1 класс = 1 файл (обязательно)
 - Простая плоская структура без вложенных пакетов
-- **8 модулей текущего состояния** (после TD-1 до TD-5)
-- Системный промпт будет вынесен в отдельный файл (итерация 6)
-- ✅ Protocol интерфейсы для слабой связанности (TD-4 завершено)
-- ✅ Разделение инфраструктуры и бизнес-логики (TD-5 завершено)
+- **9 модулей текущего состояния** (после итераций 1-6 и Tech Debt TD-1 до TD-5)
+- Системный промпт вынесен в отдельный файл system_prompt.txt
+- ✅ Protocol интерфейсы для слабой связанности
+- ✅ Разделение инфраструктуры и бизнес-логики
 - ✅ SOLID принципы применены: SRP и DIP
 - ✅ Type hints обязательны, mypy strict mode
 - ✅ Автоматизированные проверки качества (Ruff, Mypy, Pytest)
@@ -133,9 +135,9 @@ systech-aidd/
 
 ### Основные компоненты и их взаимодействие
 
-> **Примечание:** Схема показывает целевую архитектуру после рефакторинга (TD-4, TD-5). Текущая архитектура MVP (итерации 1-5) проще: TelegramBot содержит всю логику команд и обработки сообщений, без Protocol интерфейсов.
+> **Примечание:** Схема показывает текущую архитектуру после завершения рефакторинга (TD-4, TD-5 завершены 2025-10-11). Применены SOLID принципы: SRP для разделения ответственностей, DIP через Protocol интерфейсы.
 
-**Целевая архитектура (после Tech Debt):**
+**Текущая архитектура:**
 ```
 User (Telegram: текст/фото/аудио) 
     ↓
@@ -154,36 +156,9 @@ CommandHandler      MessageHandler
                     Response → User
 ```
 
-**Текущая архитектура MVP (итерации 1-5):**
-```
-User (Telegram: текст/фото/аудио) 
-    ↓
-TelegramBot (aiogram) - команды + обработка сообщений
-    ↓                    ↓
-    |            MediaProcessor (фото/аудио) [итерации 7-8]
-    |                    ↓
-    |←──→ DialogueManager (управление контекстом)
-                         ↓
-                   LLMClient (мультимодальный)
-                         ↓
-              OpenRouter API + LangSmith
-                         ↓
-                    Response → User
-```
-
 ### Описание компонентов
 
-**Текущая архитектура (MVP):**
-
-**1. TelegramBot** (bot.py) - Инфраструктура + Логика
-- Получает сообщения от пользователей: текст, фото, голосовые (polling)
-- Обрабатывает команды: /start, /reset, /help, /role (напрямую)
-- Обрабатывает текстовые и мультимодальные сообщения (напрямую)
-- Координирует работу DialogueManager и LLMClient
-- Отправляет ответы обратно пользователю
-- **Зависимости**: `LLMClient`, `DialogueManager` (прямые)
-
-**Целевая архитектура (после TD-5):**
+**Текущая архитектура:**
 
 **1. TelegramBot** (bot.py) - Только инфраструктура
 - Получает сообщения от пользователей: текст, фото, голосовые (polling)
@@ -192,14 +167,14 @@ TelegramBot (aiogram) - команды + обработка сообщений
 - Отправляет ответы обратно пользователю
 - **Зависимости**: `MessageHandler`, `CommandHandler` (DIP)
 
-**2. MessageHandler** (message_handler.py) - Бизнес-логика сообщений [после TD-5]
+**2. MessageHandler** (message_handler.py) - Бизнес-логика сообщений
 - Обрабатывает текстовые и мультимодальные сообщения
 - Координирует работу `MediaProcessor`, `DialogueStorage`, `LLMProvider`
 - Формирует контекст и получает ответ от LLM
 - Возвращает текст ответа пользователю
 - **Зависимости**: `LLMProvider`, `DialogueStorage` (Protocol через DIP)
 
-**3. CommandHandler** (command_handler.py) - Обработка команд [после TD-5]
+**3. CommandHandler** (command_handler.py) - Обработка команд
 - Обрабатывает команды: /start, /reset, /help, /role
 - Взаимодействует с `DialogueStorage` для очистки истории
 - Формирует текст ответов на команды
@@ -217,14 +192,14 @@ TelegramBot (aiogram) - команды + обработка сообщений
 - Добавляет сообщения в историю с ограничением размера
 - Предоставляет историю для формирования контекста
 - Очищает историю по запросу
-- **После TD-4**: Реализует `DialogueStorage` Protocol
+- Реализует `DialogueStorage` Protocol
 
 **6. LLMClient** (llm_client.py) - Провайдер LLM
 - Отправляет мультимодальные запросы в OpenRouter API
 - Использует openai client для работы с моделями, поддерживающими Vision
 - Интегрирован с LangSmith для мониторинга всех запросов
 - Возвращает ответ от LLM
-- **После TD-4**: Реализует `LLMProvider` Protocol
+- Реализует `LLMProvider` Protocol
 
 **7. Config** (config.py) - Конфигурация
 - Загружает настройки из .env с валидацией
@@ -232,12 +207,11 @@ TelegramBot (aiogram) - команды + обработка сообщений
 - Предоставляет конфигурацию всем модулям
 - Выбрасывает `ValueError` при отсутствии обязательных параметров
 
-**8. Interfaces** (interfaces.py) - Protocol интерфейсы [после TD-4]
+**8. Interfaces** (interfaces.py) - Protocol интерфейсы
 - `LLMProvider` - контракт для провайдеров LLM
 - `DialogueStorage` - контракт для хранилищ диалогов
 - Обеспечивает Dependency Inversion (SOLID DIP)
 - Позволяет легко заменять имплементации
-- **Создается в итерации TD-4** (Technical Debt)
 
 ### Поток данных
 
@@ -869,6 +843,6 @@ class MessageHandler:
 - Простота остается главным приоритетом
 
 **Документация:**
-- [`docs/tech_debt_report.md`](tech_debt_report.md) - детальный отчет о выполненных улучшениях
+- [`docs/reports/tech_debt_report.md`](reports/tech_debt_report.md) - детальный отчет о выполненных улучшениях
 - [`docs/tasklist_tech_debt.md`](tasklist_tech_debt.md) - план и результаты Tech Debt итераций
 
