@@ -42,33 +42,42 @@ def test_config_default_max_history():
 @patch("src.bot.config.load_dotenv")
 def test_config_missing_telegram_token(mock_load_dotenv):
     """Тест отсутствия TELEGRAM_BOT_TOKEN"""
-    with patch.dict(
-        "os.environ",
-        {"OPENROUTER_API_KEY": "test_key", "OPENROUTER_MODEL": "test_model"},
-        clear=True,
-    ), pytest.raises(ValueError, match="TELEGRAM_BOT_TOKEN is required"):
+    with (
+        patch.dict(
+            "os.environ",
+            {"OPENROUTER_API_KEY": "test_key", "OPENROUTER_MODEL": "test_model"},
+            clear=True,
+        ),
+        pytest.raises(ValueError, match="TELEGRAM_BOT_TOKEN is required"),
+    ):
         Config()
 
 
 @patch("src.bot.config.load_dotenv")
 def test_config_missing_api_key(mock_load_dotenv):
     """Тест отсутствия OPENROUTER_API_KEY"""
-    with patch.dict(
-        "os.environ",
-        {"TELEGRAM_BOT_TOKEN": "test_token", "OPENROUTER_MODEL": "test_model"},
-        clear=True,
-    ), pytest.raises(ValueError, match="OPENROUTER_API_KEY is required"):
+    with (
+        patch.dict(
+            "os.environ",
+            {"TELEGRAM_BOT_TOKEN": "test_token", "OPENROUTER_MODEL": "test_model"},
+            clear=True,
+        ),
+        pytest.raises(ValueError, match="OPENROUTER_API_KEY is required"),
+    ):
         Config()
 
 
 @patch("src.bot.config.load_dotenv")
 def test_config_missing_model(mock_load_dotenv):
     """Тест отсутствия OPENROUTER_MODEL"""
-    with patch.dict(
-        "os.environ",
-        {"TELEGRAM_BOT_TOKEN": "test_token", "OPENROUTER_API_KEY": "test_key"},
-        clear=True,
-    ), pytest.raises(ValueError, match="OPENROUTER_MODEL is required"):
+    with (
+        patch.dict(
+            "os.environ",
+            {"TELEGRAM_BOT_TOKEN": "test_token", "OPENROUTER_API_KEY": "test_key"},
+            clear=True,
+        ),
+        pytest.raises(ValueError, match="OPENROUTER_MODEL is required"),
+    ):
         Config()
 
 

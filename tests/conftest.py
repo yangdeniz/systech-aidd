@@ -3,19 +3,19 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 
 from src.bot.dialogue_manager import DialogueManager
-from src.bot.llm_client import LLMClient
+from src.bot.interfaces import DialogueStorage, LLMProvider
 
 
 @pytest.fixture
-def dialogue_manager() -> DialogueManager:
+def dialogue_manager() -> DialogueStorage:
     """Создает DialogueManager для тестов"""
     return DialogueManager(max_history=20)
 
 
 @pytest.fixture
-def mock_llm_client() -> Mock:
-    """Создает мокированный LLMClient"""
-    mock = Mock(spec=LLMClient)
+def mock_llm_client() -> LLMProvider:
+    """Создает мокированный LLMProvider"""
+    mock = Mock(spec=LLMProvider)
     mock.get_response.return_value = "Test response from LLM"
     return mock
 

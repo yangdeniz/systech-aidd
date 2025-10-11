@@ -4,8 +4,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
 from aiogram.types import Message
 
-from .dialogue_manager import DialogueManager
-from .llm_client import LLMClient
+from .interfaces import DialogueStorage, LLMProvider
 
 logger = logging.getLogger(__name__)
 
@@ -13,11 +12,11 @@ logger = logging.getLogger(__name__)
 class TelegramBot:
     bot: Bot
     dp: Dispatcher
-    llm_client: LLMClient
-    dialogue_manager: DialogueManager
+    llm_client: LLMProvider
+    dialogue_manager: DialogueStorage
 
     def __init__(
-        self, token: str, llm_client: LLMClient, dialogue_manager: DialogueManager
+        self, token: str, llm_client: LLMProvider, dialogue_manager: DialogueStorage
     ) -> None:
         self.bot = Bot(token=token)
         self.dp = Dispatcher()

@@ -1,4 +1,3 @@
-
 import pytest
 
 from src.bot.bot import TelegramBot
