@@ -52,6 +52,8 @@
 
 ### Организация файлов и директорий
 
+> **Примечание:** Структура показана в целевом состоянии после выполнения Tech Debt итераций (TD-4, TD-5). Текущее состояние MVP (итерации 1-5) содержит 6 базовых модулей без interfaces.py, message_handler.py, command_handler.py.
+
 ```
 systech-aidd/
 ├── src/
@@ -59,12 +61,12 @@ systech-aidd/
 │       ├── __init__.py
 │       ├── main.py              # Точка входа
 │       ├── bot.py               # TelegramBot класс (инфраструктура)
-│       ├── message_handler.py   # MessageHandler класс (бизнес-логика)
-│       ├── command_handler.py   # CommandHandler класс (команды)
+│       ├── message_handler.py   # MessageHandler класс (бизнес-логика) [после TD-5]
+│       ├── command_handler.py   # CommandHandler класс (команды) [после TD-5]
 │       ├── llm_client.py        # LLMClient класс (мультимодальный)
 │       ├── dialogue_manager.py  # DialogueManager класс
 │       ├── config.py            # Config класс
-│       ├── interfaces.py        # Protocol интерфейсы (DIP)
+│       ├── interfaces.py        # Protocol интерфейсы (DIP) [после TD-4]
 │       ├── media_processor.py   # MediaProcessor класс (фото/аудио)
 │       └── system_prompt.txt    # Системный промпт HomeGuru
 ├── tests/
@@ -96,24 +98,29 @@ systech-aidd/
 ```
 
 ### Описание модулей
+
+**Базовые модули MVP (итерации 1-5):**
 - **main.py** - точка входа, запуск приложения, настройка LangSmith
-- **bot.py** - инфраструктура Telegram (aiogram), делегирует в handlers
-- **message_handler.py** - бизнес-логика обработки текстовых/медиа сообщений
-- **command_handler.py** - обработка команд бота (/start, /reset, /help, /role)
+- **bot.py** - инфраструктура Telegram (aiogram) + обработка команд и сообщений
 - **llm_client.py** - работа с мультимодальными моделями через OpenRouter
 - **dialogue_manager.py** - управление контекстом диалогов (in-memory)
 - **config.py** - загрузка конфигурации из .env и системного промпта из файла
-- **interfaces.py** - Protocol интерфейсы для Dependency Inversion (LLMProvider, DialogueStorage)
-- **media_processor.py** - обработка изображений и аудио (загрузка, конвертация)
-- **system_prompt.txt** - системный промпт с ролью HomeGuru (ИИ-дизайнер)
+- **media_processor.py** - обработка изображений и аудио (загрузка, конвертация) [итерации 7-8]
+- **system_prompt.txt** - системный промпт с ролью HomeGuru (ИИ-дизайнер) [итерация 6]
+
+**Дополнительные модули после рефакторинга (Tech Debt):**
+- **message_handler.py** - бизнес-логика обработки текстовых/медиа сообщений [после TD-5]
+- **command_handler.py** - обработка команд бота (/start, /reset, /help, /role) [после TD-5]
+- **interfaces.py** - Protocol интерфейсы для Dependency Inversion (LLMProvider, DialogueStorage) [после TD-4]
 
 ### Принципы организации
 - 1 класс = 1 файл (обязательно)
 - Простая плоская структура без вложенных пакетов
-- 9 основных модулей для MVP (с учетом разделения по SRP)
+- **6 базовых модулей для MVP** (итерации 1-5)
+- **9 модулей после рефакторинга** (с учетом разделения по SRP в TD-4, TD-5)
 - Системный промпт вынесен в отдельный файл для удобства редактирования
-- Protocol интерфейсы для слабой связанности (DIP)
-- Разделение инфраструктуры и бизнес-логики (SRP)
+- Protocol интерфейсы для слабой связанности - добавляются в TD-4 (DIP)
+- Разделение инфраструктуры и бизнес-логики - выполняется в TD-5 (SRP)
 
 ---
 
@@ -121,6 +128,9 @@ systech-aidd/
 
 ### Основные компоненты и их взаимодействие
 
+> **Примечание:** Схема показывает целевую архитектуру после рефакторинга (TD-4, TD-5). Текущая архитектура MVP (итерации 1-5) проще: TelegramBot содержит всю логику команд и обработки сообщений, без Protocol интерфейсов.
+
+**Целевая архитектура (после Tech Debt):**
 ```
 User (Telegram: текст/фото/аудио) 
     ↓
@@ -139,23 +149,52 @@ CommandHandler      MessageHandler
                     Response → User
 ```
 
+**Текущая архитектура MVP (итерации 1-5):**
+```
+User (Telegram: текст/фото/аудио) 
+    ↓
+TelegramBot (aiogram) - команды + обработка сообщений
+    ↓                    ↓
+    |            MediaProcessor (фото/аудио) [итерации 7-8]
+    |                    ↓
+    |←──→ DialogueManager (управление контекстом)
+                         ↓
+                   LLMClient (мультимодальный)
+                         ↓
+              OpenRouter API + LangSmith
+                         ↓
+                    Response → User
+```
+
 ### Описание компонентов
 
-**1. TelegramBot** (bot.py) - Инфраструктура
+**Текущая архитектура (MVP):**
+
+**1. TelegramBot** (bot.py) - Инфраструктура + Логика
+- Получает сообщения от пользователей: текст, фото, голосовые (polling)
+- Обрабатывает команды: /start, /reset, /help, /role (напрямую)
+- Обрабатывает текстовые и мультимодальные сообщения (напрямую)
+- Координирует работу DialogueManager и LLMClient
+- Отправляет ответы обратно пользователю
+- **Зависимости**: `LLMClient`, `DialogueManager` (прямые)
+
+**Целевая архитектура (после TD-5):**
+
+**1. TelegramBot** (bot.py) - Только инфраструктура
 - Получает сообщения от пользователей: текст, фото, голосовые (polling)
 - Делегирует команды в `CommandHandler`
 - Делегирует обработку сообщений в `MessageHandler`
 - Отправляет ответы обратно пользователю
 - **Зависимости**: `MessageHandler`, `CommandHandler` (DIP)
 
-**2. MessageHandler** (message_handler.py) - Бизнес-логика сообщений
+**2. MessageHandler** (message_handler.py) - Бизнес-логика сообщений [после TD-5]
 - Обрабатывает текстовые и мультимодальные сообщения
 - Координирует работу `MediaProcessor`, `DialogueStorage`, `LLMProvider`
 - Формирует контекст и получает ответ от LLM
 - Возвращает текст ответа пользователю
 - **Зависимости**: `LLMProvider`, `DialogueStorage` (Protocol через DIP)
 
-**3. CommandHandler** (command_handler.py) - Обработка команд
+**3. CommandHandler** (command_handler.py) - Обработка команд [после TD-5]
 - Обрабатывает команды: /start, /reset, /help, /role
 - Взаимодействует с `DialogueStorage` для очистки истории
 - Формирует текст ответов на команды
@@ -169,18 +208,18 @@ CommandHandler      MessageHandler
 - Возвращает обработанные данные
 
 **5. DialogueManager** (dialogue_manager.py) - Хранилище диалогов
-- Реализует `DialogueStorage` Protocol
 - Хранит историю диалогов в памяти (dict: user_id → messages)
 - Добавляет сообщения в историю с ограничением размера
 - Предоставляет историю для формирования контекста
 - Очищает историю по запросу
+- **После TD-4**: Реализует `DialogueStorage` Protocol
 
 **6. LLMClient** (llm_client.py) - Провайдер LLM
-- Реализует `LLMProvider` Protocol
 - Отправляет мультимодальные запросы в OpenRouter API
 - Использует openai client для работы с моделями, поддерживающими Vision
 - Интегрирован с LangSmith для мониторинга всех запросов
 - Возвращает ответ от LLM
+- **После TD-4**: Реализует `LLMProvider` Protocol
 
 **7. Config** (config.py) - Конфигурация
 - Загружает настройки из .env с валидацией
@@ -188,11 +227,12 @@ CommandHandler      MessageHandler
 - Предоставляет конфигурацию всем модулям
 - Выбрасывает `ValueError` при отсутствии обязательных параметров
 
-**8. Interfaces** (interfaces.py) - Protocol интерфейсы
+**8. Interfaces** (interfaces.py) - Protocol интерфейсы [после TD-4]
 - `LLMProvider` - контракт для провайдеров LLM
 - `DialogueStorage` - контракт для хранилищ диалогов
 - Обеспечивает Dependency Inversion (SOLID DIP)
 - Позволяет легко заменять имплементации
+- **Создается в итерации TD-4** (Technical Debt)
 
 ### Поток данных
 

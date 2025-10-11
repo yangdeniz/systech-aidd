@@ -1,6 +1,6 @@
 # Workflow: Tech Debt - Правила работы с качеством кода
 
-> Расширенная инструкция для code-ассистента по улучшению качества кода согласно [tasklist_tech_debt.md](tasklist_tech_debt.md)
+> Расширенная инструкция для code-ассистента по улучшению качества кода согласно [tasklist_tech_debt.md](tasklist_tech_debt.md) и [conventions.md](conventions.md)
 
 ## Основные принципы
 
@@ -495,7 +495,7 @@ logger.error("Error")  # Без контекста
 
 ### Документация
 - [ ] ✅ Обновлен tasklist_tech_debt.md (прогресс, статус)
-- [ ] ✅ Обновлены conventions.mdc (если нужно)
+- [ ] ✅ Обновлены conventions.md (если нужно)
 - [ ] ✅ Обновлен vision.md (если изменилась архитектура)
 
 ---
@@ -551,13 +551,13 @@ logger.error("Error")  # Без контекста
 ## Интеграция с основным workflow
 
 **При работе над новыми фичами:**
-1. Разработка функционала (как в workflow.mdc)
+1. Разработка функционала (как в [workflow.md](workflow.md))
 2. Применение стандартов качества (этот workflow)
 3. Проверка через `make quality`
 4. Тестирование и коммит
 
 **При работе над Tech Debt:**
-1. Выполнение итерации по tasklist_tech_debt.md
+1. Выполнение итерации по [tasklist_tech_debt.md](tasklist_tech_debt.md)
 2. Следование этому workflow
 3. Обязательная проверка качества
 4. Документирование изменений
