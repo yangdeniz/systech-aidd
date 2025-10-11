@@ -46,6 +46,8 @@ class TelegramBot:
         self.dp.message(Command("role"))(self.cmd_role)
         self.dp.message(Command("help"))(self.cmd_help)
         self.dp.message(Command("reset"))(self.cmd_reset)
+        # Обработчики фото должны быть ДО текстовых сообщений
+        self.dp.message(lambda m: m.photo is not None)(self.handle_photo)
         self.dp.message()(self.handle_message)
 
     async def cmd_start(self, message: Message) -> None:
@@ -115,6 +117,37 @@ class TelegramBot:
             logger.error(f"Error handling message from user {user_id}: {e}", exc_info=True)
             await message.answer(
                 "Извините, произошла ошибка при обработке вашего сообщения. "
+                "Попробуйте еще раз или используйте /reset для очистки истории."
+            )
+
+    async def handle_photo(self, message: Message) -> None:
+        """Обработать фото от пользователя."""
+        if message.from_user is None or message.photo is None:
+            return
+
+        user_id = message.from_user.id
+        username = message.from_user.username or "unknown"
+
+        # Получаем последнее фото (самого большого размера)
+        photo = message.photo[-1]
+        photo_file_id = photo.file_id
+        caption = message.caption
+
+        logger.info(
+            f"User {user_id} (@{username}) sent photo: file_id={photo_file_id}, caption={caption}"
+        )
+
+        try:
+            # Делегируем обработку в MessageHandler
+            response = await self.message_handler.handle_photo_message(
+                user_id, username, photo_file_id, caption, self.bot
+            )
+            await message.answer(response)
+
+        except Exception as e:
+            logger.error(f"Error handling photo from user {user_id}: {e}", exc_info=True)
+            await message.answer(
+                "Извините, произошла ошибка при обработке вашего изображения. "
                 "Попробуйте еще раз или используйте /reset для очистки истории."
             )
 

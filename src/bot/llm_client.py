@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 from openai import OpenAI
 
@@ -16,18 +17,27 @@ class LLMClient:
         self.system_prompt = system_prompt
         logger.info(f"LLMClient initialized with model: {model}")
 
-    def get_response(self, messages: list[dict[str, str]]) -> str:
+    def get_response(self, messages: list[dict[str, Any]]) -> str:
         """
         Отправляет запрос в OpenRouter и возвращает ответ LLM.
 
+        Поддерживает текстовые и мультимодальные сообщения (с изображениями).
+
         Args:
-            messages: список сообщений в формате [{"role": "user", "content": "текст"}]
+            messages: список сообщений в формате:
+                - Текстовое: [{"role": "user", "content": "текст"}]
+                - Мультимодальное: [{"role": "user", "content": [
+                    {"type": "text", "text": "..."},
+                    {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,..."}}
+                  ]}]
 
         Returns:
             Текст ответа от LLM
         """
         # Добавляем system prompt в начало
-        full_messages = [{"role": "system", "content": self.system_prompt}] + messages
+        full_messages: list[dict[str, Any]] = [
+            {"role": "system", "content": self.system_prompt}
+        ] + messages
 
         logger.info(f"Sending request to LLM: model={self.model}, messages_count={len(messages)}")
 

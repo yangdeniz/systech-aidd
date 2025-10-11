@@ -5,8 +5,9 @@
 """
 
 import logging
+from typing import Any
 
-from .interfaces import DialogueStorage, LLMProvider
+from .interfaces import DialogueStorage, LLMProvider, MediaProvider
 
 logger = logging.getLogger(__name__)
 
@@ -16,17 +17,25 @@ class MessageHandler:
 
     llm_provider: LLMProvider
     dialogue_storage: DialogueStorage
+    media_provider: MediaProvider | None
 
-    def __init__(self, llm_provider: LLMProvider, dialogue_storage: DialogueStorage) -> None:
+    def __init__(
+        self,
+        llm_provider: LLMProvider,
+        dialogue_storage: DialogueStorage,
+        media_provider: MediaProvider | None = None,
+    ) -> None:
         """
         Инициализация обработчика сообщений.
 
         Args:
             llm_provider: Провайдер LLM для генерации ответов
             dialogue_storage: Хранилище истории диалогов
+            media_provider: Обработчик медиа-файлов (опционально для фото/аудио)
         """
         self.llm_provider = llm_provider
         self.dialogue_storage = dialogue_storage
+        self.media_provider = media_provider
         logger.info("MessageHandler initialized")
 
     async def handle_user_message(self, user_id: int, username: str, text: str) -> str:
@@ -65,4 +74,74 @@ class MessageHandler:
 
         except Exception as e:
             logger.error(f"Error processing message from user {user_id}: {e}", exc_info=True)
+            raise
+
+    async def handle_photo_message(
+        self,
+        user_id: int,
+        username: str,
+        photo_file_id: str,
+        caption: str | None,
+        bot: Any,
+    ) -> str:
+        """
+        Обработать фото от пользователя и получить ответ.
+
+        Args:
+            user_id: ID пользователя Telegram
+            username: Имя пользователя Telegram
+            photo_file_id: ID файла фото в Telegram
+            caption: Подпись к фото (может быть None)
+            bot: Экземпляр aiogram Bot для скачивания
+
+        Returns:
+            Текст ответа от LLM
+
+        Raises:
+            ValueError: Если MediaProvider не инициализирован
+            Exception: Если произошла ошибка при обработке
+        """
+        if self.media_provider is None:
+            raise ValueError("MediaProvider is required to handle photo messages")
+
+        logger.info(
+            f"Processing photo from user {user_id} (@{username}), "
+            f"file_id: {photo_file_id}, caption: {caption}"
+        )
+
+        try:
+            # Скачиваем фото
+            photo_bytes = await self.media_provider.download_photo(photo_file_id, bot)
+
+            # Конвертируем в base64
+            base64_image = self.media_provider.photo_to_base64(photo_bytes)
+
+            # Формируем мультимодальное сообщение
+            text = caption if caption else "Проанализируй это изображение"
+            multimodal_content: list[dict[str, Any]] = [
+                {"type": "text", "text": text},
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
+                },
+            ]
+
+            # Добавляем мультимодальное сообщение в историю
+            self.dialogue_storage.add_message(user_id, "user", multimodal_content)
+
+            # Получаем историю диалога
+            history = self.dialogue_storage.get_history(user_id)
+
+            # Получаем ответ от LLM с учетом истории
+            logger.info(f"Requesting LLM response for photo from user {user_id}")
+            response = self.llm_provider.get_response(history)
+
+            # Добавляем ответ ассистента в историю
+            self.dialogue_storage.add_message(user_id, "assistant", response)
+
+            logger.info(f"Generated response for photo from user {user_id}: {response[:50]}...")
+            return response
+
+        except Exception as e:
+            logger.error(f"Error processing photo from user {user_id}: {e}", exc_info=True)
             raise

@@ -1,10 +1,11 @@
 import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 class DialogueManager:
-    dialogues: dict[int, list[dict[str, str]]]
+    dialogues: dict[int, list[dict[str, Any]]]
     max_history: int
 
     def __init__(self, max_history: int) -> None:
@@ -12,14 +13,16 @@ class DialogueManager:
         self.max_history = max_history
         logger.info(f"DialogueManager initialized with max_history={max_history}")
 
-    def add_message(self, user_id: int, role: str, content: str) -> None:
+    def add_message(self, user_id: int, role: str, content: str | list[dict[str, Any]]) -> None:
         """
         Добавляет сообщение в историю диалога.
+
+        Поддерживает текстовые и мультимодальные сообщения (с изображениями).
 
         Args:
             user_id: ID пользователя
             role: роль отправителя ("user" или "assistant")
-            content: текст сообщения
+            content: текст сообщения или мультимодальный контент
         """
         if user_id not in self.dialogues:
             self.dialogues[user_id] = []
@@ -35,15 +38,17 @@ class DialogueManager:
             self.dialogues[user_id] = self.dialogues[user_id][-self.max_history :]
             logger.info(f"Truncated history for user {user_id} to {self.max_history} messages")
 
-    def get_history(self, user_id: int) -> list[dict[str, str]]:
+    def get_history(self, user_id: int) -> list[dict[str, Any]]:
         """
         Возвращает историю диалога для пользователя.
+
+        Поддерживает текстовые и мультимодальные сообщения.
 
         Args:
             user_id: ID пользователя
 
         Returns:
-            Список сообщений в формате [{"role": "user", "content": "текст"}]
+            Список сообщений в формате [{"role": "user", "content": "..." | [...]}]
         """
         return self.dialogues.get(user_id, [])
 

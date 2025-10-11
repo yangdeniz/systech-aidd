@@ -138,3 +138,113 @@ async def test_handle_message_no_text(
 
     # Ответ не должен быть отправлен
     mock_message.answer.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_handle_photo(
+    mock_bot_token, message_handler_with_media, command_handler, mock_message
+) -> None:
+    """Тест обработки фото от пользователя."""
+    from unittest.mock import AsyncMock, Mock
+
+    bot = TelegramBot(mock_bot_token, message_handler_with_media, command_handler)
+
+    # Arrange - мок сообщения с фото
+    mock_photo_message = AsyncMock()
+    mock_photo_message.from_user = Mock()
+    mock_photo_message.from_user.id = 12345
+    mock_photo_message.from_user.username = "testuser"
+
+    # Мок фото (список размеров, берем последнее - самое большое)
+    mock_photo = Mock()
+    mock_photo.file_id = "photo_file_id_123"
+    mock_photo_message.photo = [mock_photo]
+    mock_photo_message.caption = "Что на этом фото?"
+    mock_photo_message.answer = AsyncMock()
+
+    # Act
+    await bot.handle_photo(mock_photo_message)
+
+    # Assert - проверяем что ответ был отправлен
+    mock_photo_message.answer.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_handle_photo_without_caption(
+    mock_bot_token, message_handler_with_media, command_handler
+) -> None:
+    """Тест обработки фото без подписи."""
+    from unittest.mock import AsyncMock, Mock
+
+    bot = TelegramBot(mock_bot_token, message_handler_with_media, command_handler)
+
+    # Arrange - фото без caption
+    mock_photo_message = AsyncMock()
+    mock_photo_message.from_user = Mock()
+    mock_photo_message.from_user.id = 12345
+    mock_photo_message.from_user.username = "testuser"
+
+    mock_photo = Mock()
+    mock_photo.file_id = "photo_file_id_456"
+    mock_photo_message.photo = [mock_photo]
+    mock_photo_message.caption = None
+    mock_photo_message.answer = AsyncMock()
+
+    # Act
+    await bot.handle_photo(mock_photo_message)
+
+    # Assert
+    mock_photo_message.answer.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_handle_photo_no_user(
+    mock_bot_token, message_handler_with_media, command_handler
+) -> None:
+    """Тест обработки фото без пользователя."""
+    from unittest.mock import AsyncMock, Mock
+
+    bot = TelegramBot(mock_bot_token, message_handler_with_media, command_handler)
+
+    # Arrange - сообщение без from_user
+    mock_photo_message = AsyncMock()
+    mock_photo_message.from_user = None
+    mock_photo_message.photo = [Mock(file_id="test")]
+    mock_photo_message.answer = AsyncMock()
+
+    # Act
+    await bot.handle_photo(mock_photo_message)
+
+    # Assert - не должно быть ответа
+    mock_photo_message.answer.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_handle_photo_error(
+    mock_bot_token, message_handler_with_media, command_handler
+) -> None:
+    """Тест обработки ошибки при обработке фото."""
+    from unittest.mock import AsyncMock, Mock
+
+    # Arrange - message_handler выбросит ошибку
+    message_handler_with_media.handle_photo_message = AsyncMock(
+        side_effect=Exception("Photo processing error")
+    )
+
+    bot = TelegramBot(mock_bot_token, message_handler_with_media, command_handler)
+
+    mock_photo_message = AsyncMock()
+    mock_photo_message.from_user = Mock()
+    mock_photo_message.from_user.id = 12345
+    mock_photo_message.from_user.username = "testuser"
+    mock_photo_message.photo = [Mock(file_id="photo_id")]
+    mock_photo_message.caption = "Test"
+    mock_photo_message.answer = AsyncMock()
+
+    # Act
+    await bot.handle_photo(mock_photo_message)
+
+    # Assert - должно быть отправлено сообщение об ошибке
+    mock_photo_message.answer.assert_called_once()
+    args = mock_photo_message.answer.call_args[0]
+    assert "ошибка" in args[0].lower()

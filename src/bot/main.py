@@ -6,6 +6,7 @@ from .command_handler import CommandHandler
 from .config import Config
 from .dialogue_manager import DialogueManager
 from .llm_client import LLMClient
+from .media_processor import MediaProcessor
 from .message_handler import MessageHandler
 
 
@@ -58,9 +59,13 @@ async def main() -> None:
     dialogue_manager = DialogueManager(max_history=config.max_history)
     logging.info(f"Dialogue manager initialized with max_history={config.max_history}")
 
+    # Создаем обработчик медиа
+    media_processor = MediaProcessor()
+    logging.info("MediaProcessor initialized")
+
     # Создаем обработчики
-    message_handler = MessageHandler(llm_client, dialogue_manager)
-    logging.info("MessageHandler initialized")
+    message_handler = MessageHandler(llm_client, dialogue_manager, media_provider=media_processor)
+    logging.info("MessageHandler initialized with MediaProcessor")
 
     command_handler = CommandHandler(dialogue_manager)
     logging.info("CommandHandler initialized")

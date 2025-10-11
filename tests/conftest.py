@@ -4,7 +4,7 @@ import pytest
 
 from src.bot.command_handler import CommandHandler
 from src.bot.dialogue_manager import DialogueManager
-from src.bot.interfaces import DialogueStorage, LLMProvider
+from src.bot.interfaces import DialogueStorage, LLMProvider, MediaProvider
 from src.bot.message_handler import MessageHandler
 
 
@@ -52,3 +52,22 @@ def mock_message() -> AsyncMock:
 def mock_bot_token() -> str:
     """Возвращает тестовый токен бота"""
     return "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+
+
+@pytest.fixture
+def mock_media_provider() -> MediaProvider:
+    """Создает мокированный MediaProvider"""
+    mock = AsyncMock(spec=MediaProvider)
+    mock.download_photo.return_value = b"fake_image_bytes"
+    mock.photo_to_base64.return_value = "fake_base64_string"
+    return mock
+
+
+@pytest.fixture
+def message_handler_with_media(
+    mock_llm_client: LLMProvider,
+    dialogue_manager: DialogueStorage,
+    mock_media_provider: MediaProvider,
+) -> MessageHandler:
+    """Создает MessageHandler с MediaProvider для тестов"""
+    return MessageHandler(mock_llm_client, dialogue_manager, media_provider=mock_media_provider)
