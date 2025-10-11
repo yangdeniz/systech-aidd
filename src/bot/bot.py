@@ -3,8 +3,9 @@ import logging
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
 from aiogram.types import Message
-from dialogue_manager import DialogueManager
-from llm_client import LLMClient
+
+from .dialogue_manager import DialogueManager
+from .llm_client import LLMClient
 
 logger = logging.getLogger(__name__)
 

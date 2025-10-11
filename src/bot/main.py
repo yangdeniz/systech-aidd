@@ -1,11 +1,10 @@
 import asyncio
 import logging
 
-from config import Config
-from dialogue_manager import DialogueManager
-from llm_client import LLMClient
-
-from bot import TelegramBot  # type: ignore[attr-defined]
+from .bot import TelegramBot
+from .config import Config
+from .dialogue_manager import DialogueManager
+from .llm_client import LLMClient
 
 
 def setup_logging() -> None:
