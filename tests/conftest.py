@@ -60,6 +60,8 @@ def mock_media_provider() -> MediaProvider:
     mock = AsyncMock(spec=MediaProvider)
     mock.download_photo.return_value = b"fake_image_bytes"
     mock.photo_to_base64.return_value = "fake_base64_string"
+    mock.download_audio.return_value = b"fake_audio_bytes"
+    mock.transcribe_audio.return_value = "Fake transcribed text"
     return mock
 
 

@@ -59,9 +59,14 @@ async def main() -> None:
     dialogue_manager = DialogueManager(max_history=config.max_history)
     logging.info(f"Dialogue manager initialized with max_history={config.max_history}")
 
-    # Создаем обработчик медиа
-    media_processor = MediaProcessor()
-    logging.info("MediaProcessor initialized")
+    # Создаем обработчик медиа с параметрами Whisper
+    media_processor = MediaProcessor(
+        whisper_model=config.whisper_model, whisper_device=config.whisper_device
+    )
+    logging.info(
+        f"MediaProcessor initialized with Whisper model={config.whisper_model}, "
+        f"device={config.whisper_device}"
+    )
 
     # Создаем обработчики
     message_handler = MessageHandler(llm_client, dialogue_manager, media_provider=media_processor)

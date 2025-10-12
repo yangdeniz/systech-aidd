@@ -175,3 +175,36 @@ def test_config_prompt_file_empty(mock_load_dotenv, tmp_path) -> None:
 
         # Assert: fallback на дефолтный промпт
         assert config.system_prompt == "You are a helpful assistant."
+
+
+def test_config_whisper_parameters() -> None:
+    """🔴 RED: Тест загрузки параметров Faster-Whisper из .env"""
+    with patch.dict(
+        "os.environ",
+        {
+            "TELEGRAM_BOT_TOKEN": "test_token",
+            "OPENROUTER_API_KEY": "test_key",
+            "OPENROUTER_MODEL": "test_model",
+            "WHISPER_MODEL": "small",
+            "WHISPER_DEVICE": "cuda",
+        },
+    ):
+        config = Config()
+        assert config.whisper_model == "small"
+        assert config.whisper_device == "cuda"
+
+
+def test_config_whisper_defaults() -> None:
+    """🔴 RED: Тест дефолтных значений для Whisper"""
+    with patch.dict(
+        "os.environ",
+        {
+            "TELEGRAM_BOT_TOKEN": "test_token",
+            "OPENROUTER_API_KEY": "test_key",
+            "OPENROUTER_MODEL": "test_model",
+        },
+        clear=True,
+    ):
+        config = Config()
+        assert config.whisper_model == "base"
+        assert config.whisper_device == "cpu"

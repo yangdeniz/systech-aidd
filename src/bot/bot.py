@@ -46,8 +46,9 @@ class TelegramBot:
         self.dp.message(Command("role"))(self.cmd_role)
         self.dp.message(Command("help"))(self.cmd_help)
         self.dp.message(Command("reset"))(self.cmd_reset)
-        # Обработчики фото должны быть ДО текстовых сообщений
+        # Обработчики медиа должны быть ДО текстовых сообщений
         self.dp.message(lambda m: m.photo is not None)(self.handle_photo)
+        self.dp.message(lambda m: m.voice is not None)(self.handle_voice)
         self.dp.message()(self.handle_message)
 
     async def cmd_start(self, message: Message) -> None:
@@ -148,6 +149,32 @@ class TelegramBot:
             logger.error(f"Error handling photo from user {user_id}: {e}", exc_info=True)
             await message.answer(
                 "Извините, произошла ошибка при обработке вашего изображения. "
+                "Попробуйте еще раз или используйте /reset для очистки истории."
+            )
+
+    async def handle_voice(self, message: Message) -> None:
+        """Обработать голосовое сообщение от пользователя."""
+        if message.from_user is None or message.voice is None:
+            return
+
+        user_id = message.from_user.id
+        username = message.from_user.username or "unknown"
+
+        voice_file_id = message.voice.file_id
+
+        logger.info(f"User {user_id} (@{username}) sent voice: file_id={voice_file_id}")
+
+        try:
+            # Делегируем обработку в MessageHandler
+            response = await self.message_handler.handle_voice_message(
+                user_id, username, voice_file_id, self.bot
+            )
+            await message.answer(response)
+
+        except Exception as e:
+            logger.error(f"Error handling voice from user {user_id}: {e}", exc_info=True)
+            await message.answer(
+                "Извините, произошла ошибка при обработке вашего голосового сообщения. "
                 "Попробуйте еще раз или используйте /reset для очистки истории."
             )
 

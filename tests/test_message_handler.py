@@ -9,7 +9,7 @@ from src.bot.message_handler import MessageHandler
 
 
 @pytest.fixture
-def mock_llm_provider() -> LLMProvider:
+def mock_llm_provider() -> Mock:
     """Мок LLM провайдера."""
     mock = Mock(spec=LLMProvider)
     mock.get_response.return_value = "Test LLM response"
@@ -17,7 +17,7 @@ def mock_llm_provider() -> LLMProvider:
 
 
 @pytest.fixture
-def mock_dialogue_storage() -> DialogueStorage:
+def mock_dialogue_storage() -> Mock:
     """Мок хранилища диалогов."""
     mock = Mock(spec=DialogueStorage)
     mock.get_history.return_value = []
@@ -25,16 +25,18 @@ def mock_dialogue_storage() -> DialogueStorage:
 
 
 @pytest.fixture
-def mock_media_provider() -> MediaProvider:
+def mock_media_provider() -> AsyncMock:
     """Мок обработчика медиа."""
     mock = AsyncMock(spec=MediaProvider)
     mock.download_photo.return_value = b"fake_image_bytes"
     mock.photo_to_base64.return_value = "fake_base64_string"
+    mock.download_audio.return_value = b"fake_audio_bytes"
+    mock.transcribe_audio.return_value = "Fake transcribed text"
     return mock
 
 
 def test_message_handler_initialization(
-    mock_llm_provider: LLMProvider, mock_dialogue_storage: DialogueStorage
+    mock_llm_provider: Mock, mock_dialogue_storage: Mock
 ) -> None:
     """Тест: инициализация MessageHandler без MediaProvider."""
     handler = MessageHandler(mock_llm_provider, mock_dialogue_storage)
@@ -44,9 +46,9 @@ def test_message_handler_initialization(
 
 
 def test_message_handler_with_media_provider(
-    mock_llm_provider: LLMProvider,
-    mock_dialogue_storage: DialogueStorage,
-    mock_media_provider: MediaProvider,
+    mock_llm_provider: Mock,
+    mock_dialogue_storage: Mock,
+    mock_media_provider: AsyncMock,
 ) -> None:
     """Тест: инициализация MessageHandler с MediaProvider."""
     handler = MessageHandler(
@@ -59,9 +61,7 @@ def test_message_handler_with_media_provider(
 
 
 @pytest.mark.asyncio
-async def test_handle_user_message(
-    mock_llm_provider: LLMProvider, mock_dialogue_storage: DialogueStorage
-) -> None:
+async def test_handle_user_message(mock_llm_provider: Mock, mock_dialogue_storage: Mock) -> None:
     """Тест: обработка текстового сообщения пользователя."""
     handler = MessageHandler(mock_llm_provider, mock_dialogue_storage)
 
@@ -78,9 +78,9 @@ async def test_handle_user_message(
 
 @pytest.mark.asyncio
 async def test_handle_photo_message_with_caption(
-    mock_llm_provider: LLMProvider,
-    mock_dialogue_storage: DialogueStorage,
-    mock_media_provider: MediaProvider,
+    mock_llm_provider: Mock,
+    mock_dialogue_storage: Mock,
+    mock_media_provider: AsyncMock,
 ) -> None:
     """Тест: обработка фото с подписью."""
     handler = MessageHandler(
@@ -125,9 +125,9 @@ async def test_handle_photo_message_with_caption(
 
 @pytest.mark.asyncio
 async def test_handle_photo_message_without_caption(
-    mock_llm_provider: LLMProvider,
-    mock_dialogue_storage: DialogueStorage,
-    mock_media_provider: MediaProvider,
+    mock_llm_provider: Mock,
+    mock_dialogue_storage: Mock,
+    mock_media_provider: AsyncMock,
 ) -> None:
     """Тест: обработка фото без подписи."""
     handler = MessageHandler(
@@ -155,7 +155,7 @@ async def test_handle_photo_message_without_caption(
 
 @pytest.mark.asyncio
 async def test_handle_photo_message_without_media_provider(
-    mock_llm_provider: LLMProvider, mock_dialogue_storage: DialogueStorage
+    mock_llm_provider: Mock, mock_dialogue_storage: Mock
 ) -> None:
     """Тест: попытка обработать фото без MediaProvider."""
     handler = MessageHandler(mock_llm_provider, mock_dialogue_storage)
@@ -171,9 +171,9 @@ async def test_handle_photo_message_without_media_provider(
 
 @pytest.mark.asyncio
 async def test_handle_photo_message_error(
-    mock_llm_provider: LLMProvider,
-    mock_dialogue_storage: DialogueStorage,
-    mock_media_provider: MediaProvider,
+    mock_llm_provider: Mock,
+    mock_dialogue_storage: Mock,
+    mock_media_provider: AsyncMock,
 ) -> None:
     """Тест: обработка ошибок при работе с фото."""
     handler = MessageHandler(
@@ -188,4 +188,82 @@ async def test_handle_photo_message_error(
     with pytest.raises(Exception, match="Download error"):
         await handler.handle_photo_message(
             user_id=123, username="testuser", photo_file_id="photo123", caption="Test", bot=mock_bot
+        )
+
+
+@pytest.mark.asyncio
+async def test_handle_voice_message() -> None:
+    """🔴 RED: Тест обработки голосового сообщения."""
+    # Arrange - моки
+    mock_llm = Mock(spec=LLMProvider)
+    mock_llm.get_response.return_value = "Test voice response"
+
+    mock_storage = Mock(spec=DialogueStorage)
+    mock_storage.get_history.return_value = []
+
+    mock_media = AsyncMock(spec=MediaProvider)
+    mock_media.download_audio.return_value = b"fake_audio_bytes"
+    mock_media.transcribe_audio.return_value = "Привет HomeGuru, как дела?"
+
+    handler = MessageHandler(mock_llm, mock_storage, media_provider=mock_media)
+
+    mock_bot = AsyncMock()
+
+    # Act
+    response = await handler.handle_voice_message(
+        user_id=123, username="testuser", voice_file_id="voice123", bot=mock_bot
+    )
+
+    # Assert
+    assert response == "Test voice response"
+
+    # Проверяем скачивание и транскрибацию
+    mock_media.download_audio.assert_called_once_with("voice123", mock_bot)
+    mock_media.transcribe_audio.assert_called_once_with(b"fake_audio_bytes")
+
+    # Проверяем что транскрибированный текст был добавлен как user сообщение
+    add_message_calls = mock_storage.add_message.call_args_list
+    assert len(add_message_calls) == 2  # user message + assistant response
+
+    user_message_call = add_message_calls[0]
+    assert user_message_call[0][0] == 123  # user_id
+    assert user_message_call[0][1] == "user"  # role
+    assert user_message_call[0][2] == "Привет HomeGuru, как дела?"  # transcribed text
+
+
+@pytest.mark.asyncio
+async def test_handle_voice_message_without_media_provider() -> None:
+    """🔴 RED: Тест попытки обработать голосовое сообщение без MediaProvider."""
+    # Arrange
+    mock_llm = Mock(spec=LLMProvider)
+    mock_storage = Mock(spec=DialogueStorage)
+
+    handler = MessageHandler(mock_llm, mock_storage)  # Без MediaProvider
+    mock_bot = AsyncMock()
+
+    # Act & Assert
+    with pytest.raises(ValueError, match="MediaProvider"):
+        await handler.handle_voice_message(
+            user_id=123, username="testuser", voice_file_id="voice123", bot=mock_bot
+        )
+
+
+@pytest.mark.asyncio
+async def test_handle_voice_message_transcription_error() -> None:
+    """🔴 RED: Тест обработки ошибки транскрибации."""
+    # Arrange
+    mock_llm = Mock(spec=LLMProvider)
+    mock_storage = Mock(spec=DialogueStorage)
+
+    mock_media = AsyncMock(spec=MediaProvider)
+    mock_media.download_audio.return_value = b"fake_audio_bytes"
+    mock_media.transcribe_audio.side_effect = Exception("Transcription failed")
+
+    handler = MessageHandler(mock_llm, mock_storage, media_provider=mock_media)
+    mock_bot = AsyncMock()
+
+    # Act & Assert
+    with pytest.raises(Exception, match="Transcription failed"):
+        await handler.handle_voice_message(
+            user_id=123, username="testuser", voice_file_id="voice123", bot=mock_bot
         )

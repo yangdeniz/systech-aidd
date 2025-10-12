@@ -117,3 +117,34 @@ class MediaProvider(Protocol):
             Base64 строка
         """
         ...
+
+    async def download_audio(self, file_id: str, bot: Any) -> bytes:
+        """
+        Скачать аудио из Telegram.
+
+        Args:
+            file_id: ID файла в Telegram (голосовое сообщение)
+            bot: Экземпляр aiogram Bot для скачивания
+
+        Returns:
+            Байты аудио файла (OGG format)
+
+        Raises:
+            Exception: Если произошла ошибка при скачивании
+        """
+        ...
+
+    async def transcribe_audio(self, audio_bytes: bytes) -> str:
+        """
+        Транскрибировать аудио в текст через Faster-Whisper.
+
+        Args:
+            audio_bytes: Байты аудио файла (OGG format)
+
+        Returns:
+            Распознанный текст
+
+        Raises:
+            Exception: Если произошла ошибка при транскрибации
+        """
+        ...

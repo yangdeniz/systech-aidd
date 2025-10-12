@@ -145,3 +145,46 @@ class MessageHandler:
         except Exception as e:
             logger.error(f"Error processing photo from user {user_id}: {e}", exc_info=True)
             raise
+
+    async def handle_voice_message(
+        self,
+        user_id: int,
+        username: str,
+        voice_file_id: str,
+        bot: Any,
+    ) -> str:
+        """
+        Обработать голосовое сообщение от пользователя.
+
+        Args:
+            user_id: ID пользователя Telegram
+            username: Имя пользователя Telegram
+            voice_file_id: ID файла голосового сообщения в Telegram
+            bot: Экземпляр aiogram Bot для скачивания
+
+        Returns:
+            Текст ответа от LLM
+
+        Raises:
+            ValueError: Если MediaProvider не инициализирован
+            Exception: Если произошла ошибка при обработке
+        """
+        if self.media_provider is None:
+            raise ValueError("MediaProvider is required to handle voice messages")
+
+        logger.info(f"Processing voice from user {user_id} (@{username}), file_id: {voice_file_id}")
+
+        try:
+            # Скачиваем аудио
+            audio_bytes = await self.media_provider.download_audio(voice_file_id, bot)
+
+            # Транскрибируем аудио в текст
+            transcribed_text = await self.media_provider.transcribe_audio(audio_bytes)
+            logger.info(f"Transcribed text from user {user_id}: {transcribed_text[:50]}...")
+
+            # Обрабатываем как обычное текстовое сообщение
+            return await self.handle_user_message(user_id, username, transcribed_text)
+
+        except Exception as e:
+            logger.error(f"Error processing voice from user {user_id}: {e}", exc_info=True)
+            raise

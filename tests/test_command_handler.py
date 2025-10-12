@@ -56,3 +56,12 @@ def test_help_message_includes_role_command(command_handler: CommandHandler) -> 
     assert "/start" in message
     assert "/help" in message
     assert "/reset" in message
+
+
+def test_help_message_includes_voice_support(command_handler: CommandHandler) -> None:
+    """🔴 RED: Тест упоминания голосовых сообщений в справке."""
+    # Act
+    message = command_handler.get_help_message()
+
+    # Assert - должно быть упоминание о голосовых/аудио сообщениях
+    assert "голосов" in message.lower() or "аудио" in message.lower() or "voice" in message.lower()

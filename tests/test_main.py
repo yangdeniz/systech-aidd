@@ -36,6 +36,8 @@ async def test_main_initialization(
     mock_config.openrouter_model = "test_model"
     mock_config.system_prompt = "test_prompt"
     mock_config.max_history = 20
+    mock_config.whisper_model = "base"
+    mock_config.whisper_device = "cpu"
     mock_config_class.return_value = mock_config
 
     mock_msg_handler = Mock()

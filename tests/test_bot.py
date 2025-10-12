@@ -248,3 +248,81 @@ async def test_handle_photo_error(
     mock_photo_message.answer.assert_called_once()
     args = mock_photo_message.answer.call_args[0]
     assert "ошибка" in args[0].lower()
+
+
+@pytest.mark.asyncio
+async def test_handle_voice(mock_bot_token, message_handler_with_media, command_handler) -> None:
+    """🔴 RED: Тест обработки голосового сообщения от пользователя."""
+    from unittest.mock import AsyncMock, Mock
+
+    bot = TelegramBot(mock_bot_token, message_handler_with_media, command_handler)
+
+    # Arrange - мок сообщения с голосовым
+    mock_voice_message = AsyncMock()
+    mock_voice_message.from_user = Mock()
+    mock_voice_message.from_user.id = 12345
+    mock_voice_message.from_user.username = "testuser"
+
+    # Мок голосового сообщения
+    mock_voice = Mock()
+    mock_voice.file_id = "voice_file_id_123"
+    mock_voice_message.voice = mock_voice
+    mock_voice_message.answer = AsyncMock()
+
+    # Act
+    await bot.handle_voice(mock_voice_message)
+
+    # Assert - проверяем что ответ был отправлен
+    mock_voice_message.answer.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_handle_voice_no_user(
+    mock_bot_token, message_handler_with_media, command_handler
+) -> None:
+    """🔴 RED: Тест обработки голосового сообщения без пользователя."""
+    from unittest.mock import AsyncMock, Mock
+
+    bot = TelegramBot(mock_bot_token, message_handler_with_media, command_handler)
+
+    # Arrange - сообщение без from_user
+    mock_voice_message = AsyncMock()
+    mock_voice_message.from_user = None
+    mock_voice_message.voice = Mock(file_id="test")
+    mock_voice_message.answer = AsyncMock()
+
+    # Act
+    await bot.handle_voice(mock_voice_message)
+
+    # Assert - не должно быть ответа
+    mock_voice_message.answer.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_handle_voice_error(
+    mock_bot_token, message_handler_with_media, command_handler
+) -> None:
+    """🔴 RED: Тест обработки ошибки при обработке голосового сообщения."""
+    from unittest.mock import AsyncMock, Mock
+
+    # Arrange - message_handler выбросит ошибку
+    message_handler_with_media.handle_voice_message = AsyncMock(
+        side_effect=Exception("Voice processing error")
+    )
+
+    bot = TelegramBot(mock_bot_token, message_handler_with_media, command_handler)
+
+    mock_voice_message = AsyncMock()
+    mock_voice_message.from_user = Mock()
+    mock_voice_message.from_user.id = 12345
+    mock_voice_message.from_user.username = "testuser"
+    mock_voice_message.voice = Mock(file_id="voice_id")
+    mock_voice_message.answer = AsyncMock()
+
+    # Act
+    await bot.handle_voice(mock_voice_message)
+
+    # Assert - должно быть отправлено сообщение об ошибке
+    mock_voice_message.answer.assert_called_once()
+    args = mock_voice_message.answer.call_args[0]
+    assert "ошибка" in args[0].lower()

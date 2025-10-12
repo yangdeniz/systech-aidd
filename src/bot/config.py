@@ -13,6 +13,8 @@ class Config:
     openrouter_model: str
     system_prompt: str
     max_history: int
+    whisper_model: str
+    whisper_device: str
 
     def __init__(self) -> None:
         load_dotenv()
@@ -34,6 +36,8 @@ class Config:
 
         self.system_prompt = self._load_system_prompt_from_file()
         self.max_history = int(os.getenv("MAX_HISTORY_MESSAGES", "20"))
+        self.whisper_model = os.getenv("WHISPER_MODEL", "base")
+        self.whisper_device = os.getenv("WHISPER_DEVICE", "cpu")
 
     def _load_system_prompt_from_file(self) -> str:
         """
