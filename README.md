@@ -70,6 +70,8 @@ HomeGuru — это MVP (Minimum Viable Product) Telegram-бота, которы
 - [`docs/reports/`](docs/reports/) - отчеты о выполненных работах (tech debt)
 - [`docs/reviews/`](docs/reviews/) - результаты code review проекта
 - [`docs/addrs/`](docs/addrs/) - архитектурные решения (Architecture Decision Records)
+  - [ADR-01: Архитектура HomeGuru MVP](docs/addrs/ADR-01.md) - монолитная архитектура с мультимодальностью
+  - [ADR-02: Выбор Faster-Whisper для распознавания речи](docs/addrs/ADR-02.md) - локальное Speech-to-Text
 
 ## ⚙️ Установка и запуск
 
