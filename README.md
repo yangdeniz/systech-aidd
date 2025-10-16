@@ -26,11 +26,13 @@ HomeGuru — это MVP (Minimum Viable Product) Telegram-бота, которы
 - **TelegramBot** - инфраструктура Telegram (aiogram, polling)
 - **MessageHandler** - бизнес-логика обработки сообщений
 - **CommandHandler** - обработка команд бота
-- **DialogueManager** - управление контекстом диалогов в памяти (мультимодальность)
+- **DialogueManager** - управление контекстом диалогов (персистентное хранение в PostgreSQL)
+- **MessageRepository** - Repository pattern для работы с БД
 - **LLMClient** - интеграция с OpenRouter API (Vision API для фото)
 - **MediaProcessor** - обработка фотографий и голосовых (Faster-Whisper)
 - **Config** - управление конфигурацией из .env
 - **Interfaces** - Protocol для Dependency Inversion (SOLID DIP)
+- **Models** - SQLAlchemy ORM модели (Message с soft delete)
 
 **В разработке (Итерация 9):**
 - **LangSmith Integration** - мониторинг и трейсинг запросов к LLM
@@ -44,7 +46,10 @@ HomeGuru — это MVP (Minimum Viable Product) Telegram-бота, которы
 - **openai** - клиент для работы с OpenRouter (мультимодальные модели)
 - **faster-whisper** - локальная транскрибация аудио (Speech-to-Text)
 - **python-dotenv** - управление переменными окружения
-- **langsmith** - мониторинг LLM запросов (в разработке)
+- **PostgreSQL 16** - персистентное хранение диалогов
+- **SQLAlchemy 2.0+ ORM** - async ORM для работы с БД
+- **Alembic** - миграции базы данных
+- **Docker** - контейнеризация PostgreSQL
 
 **Качество кода:**
 - **ruff** - форматтер и линтер (заменяет Black + Flake8 + isort)
@@ -79,6 +84,7 @@ HomeGuru — это MVP (Minimum Viable Product) Telegram-бота, которы
 - [`docs/addrs/`](docs/addrs/) - архитектурные решения (Architecture Decision Records)
   - [ADR-01: Архитектура HomeGuru MVP](docs/addrs/ADR-01.md) - монолитная архитектура с мультимодальностью
   - [ADR-02: Выбор Faster-Whisper для распознавания речи](docs/addrs/ADR-02.md) - локальное Speech-to-Text
+  - [ADR-03: PostgreSQL + SQLAlchemy ORM для персистентного хранения](docs/addrs/ADR-03.md) - база данных для диалогов
 
 ## ⚙️ Установка и запуск
 
@@ -86,6 +92,7 @@ HomeGuru — это MVP (Minimum Viable Product) Telegram-бота, которы
 
 - Python 3.11 или выше
 - [uv](https://github.com/astral-sh/uv) - менеджер пакетов и зависимостей
+- [Docker](https://www.docker.com/) - для запуска PostgreSQL
 - Telegram Bot Token (получить у [@BotFather](https://t.me/BotFather))
 - OpenRouter API Key (получить на [openrouter.ai](https://openrouter.ai))
 - LangSmith API Key (опционально, для мониторинга - получить на [smith.langchain.com](https://smith.langchain.com))
@@ -126,17 +133,32 @@ HomeGuru — это MVP (Minimum Viable Product) Telegram-бота, которы
    WHISPER_MODEL=base  # Options: tiny, base, small, medium, large
    WHISPER_DEVICE=cpu  # Options: cpu, cuda
    
+   # Database (PostgreSQL)
+   DATABASE_URL=postgresql+asyncpg://homeguru:homeguru_dev@localhost:5432/homeguru
+   
    # LangSmith (опционально, для мониторинга)
    LANGSMITH_API_KEY=ваш_langsmith_ключ
    LANGSMITH_PROJECT=homeguru
    ```
 
-4. **Настройка системного промпта**
+4. **Запуск PostgreSQL**
+   
+   Запустите PostgreSQL в Docker:
+   ```bash
+   make db-up
+   ```
+   
+   Примените миграции базы данных:
+   ```bash
+   make db-migrate
+   ```
+
+5. **Настройка системного промпта**
    
    Системный промпт HomeGuru хранится в файле `src/bot/system_prompt.txt`.
    При необходимости отредактируйте его для изменения роли и поведения бота.
 
-5. **Запуск бота**
+6. **Запуск бота**
    ```bash
    make run
    ```
@@ -153,6 +175,13 @@ HomeGuru — это MVP (Minimum Viable Product) Telegram-бота, которы
 - `make typecheck` - проверка типов (Mypy strict mode)
 - `make test` - запуск тестов с покрытием (Pytest + coverage)
 - `make quality` - все проверки качества вместе
+
+**Управление базой данных:**
+- `make db-up` - запустить PostgreSQL в Docker
+- `make db-down` - остановить PostgreSQL
+- `make db-migrate` - применить миграции
+- `make db-revision MSG="description"` - создать новую миграцию
+- `make db-reset` - сбросить БД и применить миграции заново
 
 ## 🚀 Команды бота
 

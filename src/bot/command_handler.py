@@ -88,7 +88,7 @@ class CommandHandler:
             "который будет отражать твою индивидуальность!"
         )
 
-    def reset_dialogue(self, user_id: int) -> str:
+    async def reset_dialogue(self, user_id: int) -> str:
         """
         Очистить историю диалога пользователя.
 
@@ -98,6 +98,6 @@ class CommandHandler:
         Returns:
             Текст подтверждения очистки
         """
-        self.dialogue_storage.clear_history(user_id)
+        await self.dialogue_storage.clear_history(user_id)
         logger.info(f"Dialogue history cleared for user {user_id}")
         return "✅ История диалога очищена!\n\nТеперь можешь начать новый разговор."

@@ -96,7 +96,7 @@ class TelegramBot:
         username = message.from_user.username or "unknown"
         logger.info(f"User {user_id} (@{username}) executed /reset command")
 
-        response = self.command_handler.reset_dialogue(user_id)
+        response = await self.command_handler.reset_dialogue(user_id)
         await message.answer(response)
 
     async def handle_message(self, message: Message) -> None:

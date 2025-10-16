@@ -43,9 +43,13 @@ class DialogueStorage(Protocol):
 
     Любой класс, реализующий эти методы, может использоваться для хранения истории.
     Поддерживает текстовые и мультимодальные сообщения (с изображениями).
+
+    Все методы асинхронные для поддержки персистентного хранения в БД.
     """
 
-    def add_message(self, user_id: int, role: str, content: str | list[dict[str, Any]]) -> None:
+    async def add_message(
+        self, user_id: int, role: str, content: str | list[dict[str, Any]]
+    ) -> None:
         """
         Добавить сообщение в историю диалога.
 
@@ -61,7 +65,7 @@ class DialogueStorage(Protocol):
         """
         ...
 
-    def get_history(self, user_id: int) -> list[dict[str, Any]]:
+    async def get_history(self, user_id: int) -> list[dict[str, Any]]:
         """
         Получить историю диалога пользователя.
 
@@ -73,7 +77,7 @@ class DialogueStorage(Protocol):
         """
         ...
 
-    def clear_history(self, user_id: int) -> None:
+    async def clear_history(self, user_id: int) -> None:
         """
         Очистить историю диалога пользователя.
 

@@ -59,12 +59,12 @@ async def test_cmd_reset(
     bot = TelegramBot(mock_bot_token, message_handler, command_handler)
 
     # Добавляем историю
-    dialogue_manager.add_message(12345, "user", "test")
+    await dialogue_manager.add_message(12345, "user", "test")
 
     await bot.cmd_reset(mock_message)
 
     # Проверяем что история очищена
-    history = dialogue_manager.get_history(12345)
+    history = await dialogue_manager.get_history(12345)
     assert len(history) == 0
     mock_message.answer.assert_called_once()
 
@@ -84,7 +84,7 @@ async def test_handle_message_success(
     await bot.handle_message(mock_message)
 
     # Проверяем что сообщение добавлено в историю
-    history = dialogue_manager.get_history(12345)
+    history = await dialogue_manager.get_history(12345)
     assert len(history) == 2  # user + assistant
 
     # Проверяем что LLM был вызван

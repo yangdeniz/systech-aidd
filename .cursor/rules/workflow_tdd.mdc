@@ -1,7 +1,6 @@
 ---
-alwaysApply: true
+alwaysApply: false
 ---
-
 # Workflow: TDD Development Process
 
 > Инструкция для code-ассистента по разработке через TDD согласно [vision.md](vision.md), [tasklist.md](tasklist.md) и [qa_conventions.mdc](qa_conventions.mdc)

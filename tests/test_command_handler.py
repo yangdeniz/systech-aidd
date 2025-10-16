@@ -11,7 +11,11 @@ from src.bot.interfaces import DialogueStorage
 @pytest.fixture
 def mock_dialogue_storage() -> DialogueStorage:
     """Мок хранилища диалогов."""
-    return Mock(spec=DialogueStorage)
+    mock = Mock(spec=DialogueStorage)
+    mock.add_message = Mock(return_value=None)
+    mock.get_history = Mock(return_value=[])
+    mock.clear_history = Mock(return_value=None)
+    return mock
 
 
 @pytest.fixture

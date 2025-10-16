@@ -1,17 +1,53 @@
 from unittest.mock import AsyncMock, Mock
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from testcontainers.postgres import PostgresContainer
 
 from src.bot.command_handler import CommandHandler
 from src.bot.dialogue_manager import DialogueManager
 from src.bot.interfaces import DialogueStorage, LLMProvider, MediaProvider
 from src.bot.message_handler import MessageHandler
+from src.bot.models import Base
+
+
+@pytest.fixture(scope="session")
+def postgres_container():
+    """Создает PostgreSQL контейнер для всей сессии тестов"""
+    with PostgresContainer("postgres:16-alpine") as postgres:
+        yield postgres
 
 
 @pytest.fixture
-def dialogue_manager() -> DialogueStorage:
+async def test_engine(postgres_container):
+    """Создает тестовый PostgreSQL engine через testcontainers"""
+    # Конвертируем URL из psycopg2 в asyncpg
+    database_url = postgres_container.get_connection_url().replace("psycopg2", "asyncpg")
+    engine = create_async_engine(database_url, echo=False)
+
+    # Создаем таблицы
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    yield engine
+
+    # Очищаем таблицы после каждого теста
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+
+    await engine.dispose()
+
+
+@pytest.fixture
+async def test_session_factory(test_engine):
+    """Создает session factory для тестов"""
+    return async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
+
+
+@pytest.fixture
+async def dialogue_manager(test_session_factory) -> DialogueStorage:
     """Создает DialogueManager для тестов"""
-    return DialogueManager(max_history=20)
+    return DialogueManager(session_factory=test_session_factory, max_history=20)
 
 
 @pytest.fixture

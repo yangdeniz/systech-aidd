@@ -22,11 +22,18 @@ def test_setup_logging():
 
 @pytest.mark.asyncio
 @patch("src.bot.main.Config")
+@patch("src.bot.main.create_engine")
+@patch("src.bot.main.create_session_factory")
 @patch("src.bot.main.MessageHandler")
 @patch("src.bot.main.CommandHandler")
 @patch("src.bot.main.TelegramBot")
 async def test_main_initialization(
-    mock_bot_class, mock_cmd_handler_class, mock_msg_handler_class, mock_config_class
+    mock_bot_class,
+    mock_cmd_handler_class,
+    mock_msg_handler_class,
+    mock_session_factory_func,
+    mock_engine_func,
+    mock_config_class,
 ):
     """Тест инициализации компонентов в main"""
     # Настраиваем моки
@@ -38,7 +45,15 @@ async def test_main_initialization(
     mock_config.max_history = 20
     mock_config.whisper_model = "base"
     mock_config.whisper_device = "cpu"
+    mock_config.database_url = "sqlite+aiosqlite:///:memory:"
     mock_config_class.return_value = mock_config
+
+    mock_engine = AsyncMock()
+    mock_engine.dispose = AsyncMock()
+    mock_engine_func.return_value = mock_engine
+
+    mock_session_factory = Mock()
+    mock_session_factory_func.return_value = mock_session_factory
 
     mock_msg_handler = Mock()
     mock_msg_handler_class.return_value = mock_msg_handler
@@ -64,6 +79,10 @@ async def test_main_initialization(
     # Проверяем, что Config был создан
     mock_config_class.assert_called_once()
 
+    # Проверяем, что engine и session_factory были созданы
+    mock_engine_func.assert_called_once()
+    mock_session_factory_func.assert_called_once()
+
     # Проверяем, что MessageHandler был создан
     mock_msg_handler_class.assert_called_once()
 
@@ -72,3 +91,6 @@ async def test_main_initialization(
 
     # Проверяем, что TelegramBot был создан с правильными параметрами
     mock_bot_class.assert_called_once()
+
+    # Проверяем, что engine.dispose был вызван при завершении
+    mock_engine.dispose.assert_awaited_once()

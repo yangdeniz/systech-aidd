@@ -15,6 +15,7 @@ class Config:
     max_history: int
     whisper_model: str
     whisper_device: str
+    database_url: str
 
     def __init__(self) -> None:
         load_dotenv()
@@ -38,6 +39,10 @@ class Config:
         self.max_history = int(os.getenv("MAX_HISTORY_MESSAGES", "20"))
         self.whisper_model = os.getenv("WHISPER_MODEL", "base")
         self.whisper_device = os.getenv("WHISPER_DEVICE", "cpu")
+        self.database_url = os.getenv(
+            "DATABASE_URL",
+            "postgresql+asyncpg://homeguru:homeguru_dev@localhost:5432/homeguru",
+        )
 
     def _load_system_prompt_from_file(self) -> str:
         """

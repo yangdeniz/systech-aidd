@@ -4,10 +4,13 @@ import logging
 from .bot import TelegramBot
 from .command_handler import CommandHandler
 from .config import Config
+from .database import create_engine, create_session_factory
 from .dialogue_manager import DialogueManager
 from .llm_client import LLMClient
 from .media_processor import MediaProcessor
 from .message_handler import MessageHandler
+from .models import Base
+from .repository import MessageRepository
 
 
 def setup_logging() -> None:
@@ -47,6 +50,11 @@ async def main() -> None:
 
     config = Config()
 
+    # Создаем database engine и session factory
+    engine = create_engine(config)
+    session_factory = create_session_factory(engine)
+    logging.info("Database engine and session factory initialized")
+
     # Создаем LLM клиент
     llm_client = LLMClient(
         api_key=config.openrouter_api_key,
@@ -55,8 +63,10 @@ async def main() -> None:
     )
     logging.info("LLM client initialized")
 
-    # Создаем менеджер диалогов
-    dialogue_manager = DialogueManager(max_history=config.max_history)
+    # Создаем менеджер диалогов с session factory (создает сессию для каждого запроса)
+    dialogue_manager = DialogueManager(
+        session_factory=session_factory, max_history=config.max_history
+    )
     logging.info(f"Dialogue manager initialized with max_history={config.max_history}")
 
     # Создаем обработчик медиа с параметрами Whisper
@@ -79,8 +89,14 @@ async def main() -> None:
     telegram_bot = TelegramBot(config.telegram_token, message_handler, command_handler)
     logging.info("Telegram bot initialized")
 
-    logging.info("Bot is starting polling...")
-    await telegram_bot.start()
+    try:
+        logging.info("Bot is starting polling...")
+        await telegram_bot.start()
+    finally:
+        # Graceful shutdown
+        logging.info("Shutting down...")
+        await engine.dispose()
+        logging.info("Database connections closed")
 
 
 if __name__ == "__main__":

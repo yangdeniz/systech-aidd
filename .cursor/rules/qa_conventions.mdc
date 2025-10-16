@@ -1,7 +1,6 @@
 ---
-alwaysApply: true
+alwaysApply: false
 ---
-
 # QA Testing Conventions
 
 > Компактные правила тестирования для TDD-подхода. Тестируем только основной функционал, избегаем boilerplate.

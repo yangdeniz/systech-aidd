@@ -57,17 +57,17 @@ class MessageHandler:
 
         try:
             # Добавляем сообщение пользователя в историю
-            self.dialogue_storage.add_message(user_id, "user", text)
+            await self.dialogue_storage.add_message(user_id, "user", text)
 
             # Получаем историю диалога
-            history = self.dialogue_storage.get_history(user_id)
+            history = await self.dialogue_storage.get_history(user_id)
 
             # Получаем ответ от LLM с учетом истории
             logger.info(f"Requesting LLM response for user {user_id}")
             response = self.llm_provider.get_response(history)
 
             # Добавляем ответ ассистента в историю
-            self.dialogue_storage.add_message(user_id, "assistant", response)
+            await self.dialogue_storage.add_message(user_id, "assistant", response)
 
             logger.info(f"Generated response for user {user_id}: {response[:50]}...")
             return response
@@ -127,17 +127,17 @@ class MessageHandler:
             ]
 
             # Добавляем мультимодальное сообщение в историю
-            self.dialogue_storage.add_message(user_id, "user", multimodal_content)
+            await self.dialogue_storage.add_message(user_id, "user", multimodal_content)
 
             # Получаем историю диалога
-            history = self.dialogue_storage.get_history(user_id)
+            history = await self.dialogue_storage.get_history(user_id)
 
             # Получаем ответ от LLM с учетом истории
             logger.info(f"Requesting LLM response for photo from user {user_id}")
             response = self.llm_provider.get_response(history)
 
             # Добавляем ответ ассистента в историю
-            self.dialogue_storage.add_message(user_id, "assistant", response)
+            await self.dialogue_storage.add_message(user_id, "assistant", response)
 
             logger.info(f"Generated response for photo from user {user_id}: {response[:50]}...")
             return response
