@@ -3,9 +3,11 @@ import logging
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
 from aiogram.types import Message
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from .command_handler import CommandHandler
 from .message_handler import MessageHandler
+from .repository import UserRepository
 
 logger = logging.getLogger(__name__)
 
@@ -16,15 +18,21 @@ class TelegramBot:
 
     Делегирует обработку команд в CommandHandler,
     обработку сообщений в MessageHandler.
+    Автоматически отслеживает пользователей через UserRepository.
     """
 
     bot: Bot
     dp: Dispatcher
     message_handler: MessageHandler
     command_handler: CommandHandler
+    session_factory: async_sessionmaker[AsyncSession]
 
     def __init__(
-        self, token: str, message_handler: MessageHandler, command_handler: CommandHandler
+        self,
+        token: str,
+        message_handler: MessageHandler,
+        command_handler: CommandHandler,
+        session_factory: async_sessionmaker[AsyncSession],
     ) -> None:
         """
         Инициализация Telegram бота.
@@ -33,11 +41,13 @@ class TelegramBot:
             token: Токен Telegram бота
             message_handler: Обработчик пользовательских сообщений
             command_handler: Обработчик команд бота
+            session_factory: Фабрика сессий для создания UserRepository
         """
         self.bot = Bot(token=token)
         self.dp = Dispatcher()
         self.message_handler = message_handler
         self.command_handler = command_handler
+        self.session_factory = session_factory
         self._register_handlers()
         logger.info("TelegramBot instance created")
 
@@ -51,10 +61,35 @@ class TelegramBot:
         self.dp.message(lambda m: m.voice is not None)(self.handle_voice)
         self.dp.message()(self.handle_message)
 
+    async def _track_user(self, message: Message) -> None:
+        """
+        Отследить пользователя в базе данных.
+
+        Создает или обновляет запись пользователя, обновляет last_seen.
+
+        Args:
+            message: Telegram сообщение с информацией о пользователе
+        """
+        if message.from_user is None:
+            return
+
+        async with self.session_factory() as session:
+            user_repo = UserRepository(session)
+            await user_repo.get_or_create_user(
+                telegram_id=message.from_user.id,
+                username=message.from_user.username,
+                first_name=message.from_user.first_name,
+                last_name=message.from_user.last_name,
+                language_code=message.from_user.language_code,
+            )
+
     async def cmd_start(self, message: Message) -> None:
         """Обработать команду /start."""
         if message.from_user is None:
             return
+
+        # Отслеживаем пользователя
+        await self._track_user(message)
 
         user_id = message.from_user.id
         username = message.from_user.username or "unknown"
@@ -68,6 +103,9 @@ class TelegramBot:
         if message.from_user is None:
             return
 
+        # Отслеживаем пользователя
+        await self._track_user(message)
+
         user_id = message.from_user.id
         username = message.from_user.username or "unknown"
         logger.info(f"User {user_id} (@{username}) executed /role command")
@@ -79,6 +117,9 @@ class TelegramBot:
         """Обработать команду /help."""
         if message.from_user is None:
             return
+
+        # Отслеживаем пользователя
+        await self._track_user(message)
 
         user_id = message.from_user.id
         username = message.from_user.username or "unknown"
@@ -92,6 +133,9 @@ class TelegramBot:
         if message.from_user is None:
             return
 
+        # Отслеживаем пользователя
+        await self._track_user(message)
+
         user_id = message.from_user.id
         username = message.from_user.username or "unknown"
         logger.info(f"User {user_id} (@{username}) executed /reset command")
@@ -103,6 +147,9 @@ class TelegramBot:
         """Обработать пользовательское сообщение."""
         if message.from_user is None or message.text is None:
             return
+
+        # Отслеживаем пользователя
+        await self._track_user(message)
 
         user_id = message.from_user.id
         username = message.from_user.username or "unknown"
@@ -125,6 +172,9 @@ class TelegramBot:
         """Обработать фото от пользователя."""
         if message.from_user is None or message.photo is None:
             return
+
+        # Отслеживаем пользователя
+        await self._track_user(message)
 
         user_id = message.from_user.id
         username = message.from_user.username or "unknown"
@@ -156,6 +206,9 @@ class TelegramBot:
         """Обработать голосовое сообщение от пользователя."""
         if message.from_user is None or message.voice is None:
             return
+
+        # Отслеживаем пользователя
+        await self._track_user(message)
 
         user_id = message.from_user.id
         username = message.from_user.username or "unknown"

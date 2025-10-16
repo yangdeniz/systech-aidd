@@ -47,6 +47,22 @@ async def test_session_factory(test_engine):
 @pytest.fixture
 async def dialogue_manager(test_session_factory) -> DialogueStorage:
     """Создает DialogueManager для тестов"""
+    # Создаем тестовых пользователей для предотвращения foreign key errors
+    from src.bot.repository import UserRepository
+
+    async with test_session_factory() as session:
+        user_repo = UserRepository(session)
+        # Создаем несколько тестовых пользователей с распространенными ID
+        test_user_ids = [111, 123, 222, 456, 789, 12345]
+        for user_id in test_user_ids:
+            await user_repo.get_or_create_user(
+                telegram_id=user_id,
+                username=f"testuser{user_id}",
+                first_name="Test",
+                last_name="User",
+                language_code="en",
+            )
+
     return DialogueManager(session_factory=test_session_factory, max_history=20)
 
 
@@ -79,6 +95,9 @@ def mock_message() -> AsyncMock:
     message.from_user = Mock()
     message.from_user.id = 12345
     message.from_user.username = "testuser"
+    message.from_user.first_name = "Test"
+    message.from_user.last_name = "User"
+    message.from_user.language_code = "en"
     message.text = "Test message"
     message.answer = AsyncMock()
     return message
@@ -109,3 +128,16 @@ def message_handler_with_media(
 ) -> MessageHandler:
     """Создает MessageHandler с MediaProvider для тестов"""
     return MessageHandler(mock_llm_client, dialogue_manager, media_provider=mock_media_provider)
+
+
+@pytest.fixture
+def telegram_bot(
+    mock_bot_token: str,
+    message_handler: MessageHandler,
+    command_handler: CommandHandler,
+    test_session_factory: async_sessionmaker[AsyncSession],
+):  # type: ignore[misc]
+    """Создает TelegramBot для тестов"""
+    from src.bot.bot import TelegramBot
+
+    return TelegramBot(mock_bot_token, message_handler, command_handler, test_session_factory)

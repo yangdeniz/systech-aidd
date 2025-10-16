@@ -5,7 +5,6 @@
 """
 
 import logging
-from typing import Any
 
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,

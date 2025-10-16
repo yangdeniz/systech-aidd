@@ -4,22 +4,19 @@ from src.bot.bot import TelegramBot
 
 
 @pytest.mark.asyncio
-async def test_bot_initialization(mock_bot_token, message_handler, command_handler) -> None:
+async def test_bot_initialization(telegram_bot, message_handler, command_handler) -> None:
     """Тест инициализации TelegramBot"""
-    bot = TelegramBot(mock_bot_token, message_handler, command_handler)
-
-    assert bot.message_handler == message_handler
-    assert bot.command_handler == command_handler
-    assert bot.bot is not None
-    assert bot.dp is not None
+    assert telegram_bot.message_handler == message_handler
+    assert telegram_bot.command_handler == command_handler
+    assert telegram_bot.bot is not None
+    assert telegram_bot.dp is not None
+    assert telegram_bot.session_factory is not None
 
 
 @pytest.mark.asyncio
-async def test_cmd_start(mock_bot_token, message_handler, command_handler, mock_message) -> None:
+async def test_cmd_start(telegram_bot, mock_message) -> None:
     """Тест команды /start"""
-    bot = TelegramBot(mock_bot_token, message_handler, command_handler)
-
-    await bot.cmd_start(mock_message)
+    await telegram_bot.cmd_start(mock_message)
 
     mock_message.answer.assert_called_once()
     args = mock_message.answer.call_args[0]
@@ -27,11 +24,9 @@ async def test_cmd_start(mock_bot_token, message_handler, command_handler, mock_
 
 
 @pytest.mark.asyncio
-async def test_cmd_help(mock_bot_token, message_handler, command_handler, mock_message) -> None:
+async def test_cmd_help(telegram_bot, mock_message) -> None:
     """Тест команды /help"""
-    bot = TelegramBot(mock_bot_token, message_handler, command_handler)
-
-    await bot.cmd_help(mock_message)
+    await telegram_bot.cmd_help(mock_message)
 
     mock_message.answer.assert_called_once()
     args = mock_message.answer.call_args[0]
@@ -39,11 +34,9 @@ async def test_cmd_help(mock_bot_token, message_handler, command_handler, mock_m
 
 
 @pytest.mark.asyncio
-async def test_cmd_role(mock_bot_token, message_handler, command_handler, mock_message) -> None:
+async def test_cmd_role(telegram_bot, mock_message) -> None:
     """Тест команды /role"""
-    bot = TelegramBot(mock_bot_token, message_handler, command_handler)
-
-    await bot.cmd_role(mock_message)
+    await telegram_bot.cmd_role(mock_message)
 
     mock_message.answer.assert_called_once()
     args = mock_message.answer.call_args[0]
@@ -52,16 +45,12 @@ async def test_cmd_role(mock_bot_token, message_handler, command_handler, mock_m
 
 
 @pytest.mark.asyncio
-async def test_cmd_reset(
-    mock_bot_token, message_handler, command_handler, dialogue_manager, mock_message
-) -> None:
+async def test_cmd_reset(telegram_bot, dialogue_manager, mock_message) -> None:
     """Тест команды /reset"""
-    bot = TelegramBot(mock_bot_token, message_handler, command_handler)
-
     # Добавляем историю
     await dialogue_manager.add_message(12345, "user", "test")
 
-    await bot.cmd_reset(mock_message)
+    await telegram_bot.cmd_reset(mock_message)
 
     # Проверяем что история очищена
     history = await dialogue_manager.get_history(12345)
@@ -71,17 +60,13 @@ async def test_cmd_reset(
 
 @pytest.mark.asyncio
 async def test_handle_message_success(
-    mock_bot_token,
-    message_handler,
-    command_handler,
+    telegram_bot,
     dialogue_manager,
     mock_llm_client,
     mock_message,
 ) -> None:
     """Тест успешной обработки сообщения"""
-    bot = TelegramBot(mock_bot_token, message_handler, command_handler)
-
-    await bot.handle_message(mock_message)
+    await telegram_bot.handle_message(mock_message)
 
     # Проверяем что сообщение добавлено в историю
     history = await dialogue_manager.get_history(12345)
@@ -95,16 +80,12 @@ async def test_handle_message_success(
 
 
 @pytest.mark.asyncio
-async def test_handle_message_error(
-    mock_bot_token, mock_llm_client, message_handler, command_handler, mock_message
-) -> None:
+async def test_handle_message_error(telegram_bot, mock_llm_client, mock_message) -> None:
     """Тест обработки ошибки при обработке сообщения"""
     # Заставляем LLM выбросить ошибку
     mock_llm_client.get_response.side_effect = Exception("LLM Error")
 
-    bot = TelegramBot(mock_bot_token, message_handler, command_handler)
-
-    await bot.handle_message(mock_message)
+    await telegram_bot.handle_message(mock_message)
 
     # Проверяем что отправлено сообщение об ошибке
     mock_message.answer.assert_called_once()
@@ -113,47 +94,49 @@ async def test_handle_message_error(
 
 
 @pytest.mark.asyncio
-async def test_cmd_start_no_user(
-    mock_bot_token, message_handler, command_handler, mock_message
-) -> None:
+async def test_cmd_start_no_user(telegram_bot, mock_message) -> None:
     """Тест команды /start без пользователя"""
-    bot = TelegramBot(mock_bot_token, message_handler, command_handler)
     mock_message.from_user = None
 
-    await bot.cmd_start(mock_message)
+    await telegram_bot.cmd_start(mock_message)
 
     # Не должно быть вызовов answer
     mock_message.answer.assert_not_called()
 
 
 @pytest.mark.asyncio
-async def test_handle_message_no_text(
-    mock_bot_token, message_handler, command_handler, mock_message
-) -> None:
+async def test_handle_message_no_text(telegram_bot, mock_message) -> None:
     """Тест обработки сообщения без текста"""
-    bot = TelegramBot(mock_bot_token, message_handler, command_handler)
     mock_message.text = None
 
-    await bot.handle_message(mock_message)
+    await telegram_bot.handle_message(mock_message)
 
     # Ответ не должен быть отправлен
     mock_message.answer.assert_not_called()
 
 
 @pytest.mark.asyncio
-async def test_handle_photo(
-    mock_bot_token, message_handler_with_media, command_handler, mock_message
-) -> None:
+async def test_handle_photo(telegram_bot, message_handler_with_media, mock_message) -> None:
     """Тест обработки фото от пользователя."""
     from unittest.mock import AsyncMock, Mock
 
-    bot = TelegramBot(mock_bot_token, message_handler_with_media, command_handler)
+    # Create a new bot with media-enabled handler
+
+    bot = TelegramBot(
+        telegram_bot.bot.token,
+        message_handler_with_media,
+        telegram_bot.command_handler,
+        telegram_bot.session_factory,
+    )
 
     # Arrange - мок сообщения с фото
     mock_photo_message = AsyncMock()
     mock_photo_message.from_user = Mock()
     mock_photo_message.from_user.id = 12345
     mock_photo_message.from_user.username = "testuser"
+    mock_photo_message.from_user.first_name = "Test"
+    mock_photo_message.from_user.last_name = "User"
+    mock_photo_message.from_user.language_code = "en"
 
     # Мок фото (список размеров, берем последнее - самое большое)
     mock_photo = Mock()
@@ -170,19 +153,26 @@ async def test_handle_photo(
 
 
 @pytest.mark.asyncio
-async def test_handle_photo_without_caption(
-    mock_bot_token, message_handler_with_media, command_handler
-) -> None:
+async def test_handle_photo_without_caption(telegram_bot, message_handler_with_media) -> None:
     """Тест обработки фото без подписи."""
     from unittest.mock import AsyncMock, Mock
 
-    bot = TelegramBot(mock_bot_token, message_handler_with_media, command_handler)
+
+    bot = TelegramBot(
+        telegram_bot.bot.token,
+        message_handler_with_media,
+        telegram_bot.command_handler,
+        telegram_bot.session_factory,
+    )
 
     # Arrange - фото без caption
     mock_photo_message = AsyncMock()
     mock_photo_message.from_user = Mock()
     mock_photo_message.from_user.id = 12345
     mock_photo_message.from_user.username = "testuser"
+    mock_photo_message.from_user.first_name = "Test"
+    mock_photo_message.from_user.last_name = "User"
+    mock_photo_message.from_user.language_code = "en"
 
     mock_photo = Mock()
     mock_photo.file_id = "photo_file_id_456"
@@ -198,13 +188,17 @@ async def test_handle_photo_without_caption(
 
 
 @pytest.mark.asyncio
-async def test_handle_photo_no_user(
-    mock_bot_token, message_handler_with_media, command_handler
-) -> None:
+async def test_handle_photo_no_user(telegram_bot, message_handler_with_media) -> None:
     """Тест обработки фото без пользователя."""
     from unittest.mock import AsyncMock, Mock
 
-    bot = TelegramBot(mock_bot_token, message_handler_with_media, command_handler)
+
+    bot = TelegramBot(
+        telegram_bot.bot.token,
+        message_handler_with_media,
+        telegram_bot.command_handler,
+        telegram_bot.session_factory,
+    )
 
     # Arrange - сообщение без from_user
     mock_photo_message = AsyncMock()
@@ -220,23 +214,30 @@ async def test_handle_photo_no_user(
 
 
 @pytest.mark.asyncio
-async def test_handle_photo_error(
-    mock_bot_token, message_handler_with_media, command_handler
-) -> None:
+async def test_handle_photo_error(telegram_bot, message_handler_with_media) -> None:
     """Тест обработки ошибки при обработке фото."""
     from unittest.mock import AsyncMock, Mock
+
 
     # Arrange - message_handler выбросит ошибку
     message_handler_with_media.handle_photo_message = AsyncMock(
         side_effect=Exception("Photo processing error")
     )
 
-    bot = TelegramBot(mock_bot_token, message_handler_with_media, command_handler)
+    bot = TelegramBot(
+        telegram_bot.bot.token,
+        message_handler_with_media,
+        telegram_bot.command_handler,
+        telegram_bot.session_factory,
+    )
 
     mock_photo_message = AsyncMock()
     mock_photo_message.from_user = Mock()
     mock_photo_message.from_user.id = 12345
     mock_photo_message.from_user.username = "testuser"
+    mock_photo_message.from_user.first_name = "Test"
+    mock_photo_message.from_user.last_name = "User"
+    mock_photo_message.from_user.language_code = "en"
     mock_photo_message.photo = [Mock(file_id="photo_id")]
     mock_photo_message.caption = "Test"
     mock_photo_message.answer = AsyncMock()
@@ -251,17 +252,26 @@ async def test_handle_photo_error(
 
 
 @pytest.mark.asyncio
-async def test_handle_voice(mock_bot_token, message_handler_with_media, command_handler) -> None:
-    """🔴 RED: Тест обработки голосового сообщения от пользователя."""
+async def test_handle_voice(telegram_bot, message_handler_with_media) -> None:
+    """Тест обработки голосового сообщения от пользователя."""
     from unittest.mock import AsyncMock, Mock
 
-    bot = TelegramBot(mock_bot_token, message_handler_with_media, command_handler)
+
+    bot = TelegramBot(
+        telegram_bot.bot.token,
+        message_handler_with_media,
+        telegram_bot.command_handler,
+        telegram_bot.session_factory,
+    )
 
     # Arrange - мок сообщения с голосовым
     mock_voice_message = AsyncMock()
     mock_voice_message.from_user = Mock()
     mock_voice_message.from_user.id = 12345
     mock_voice_message.from_user.username = "testuser"
+    mock_voice_message.from_user.first_name = "Test"
+    mock_voice_message.from_user.last_name = "User"
+    mock_voice_message.from_user.language_code = "en"
 
     # Мок голосового сообщения
     mock_voice = Mock()
@@ -277,13 +287,17 @@ async def test_handle_voice(mock_bot_token, message_handler_with_media, command_
 
 
 @pytest.mark.asyncio
-async def test_handle_voice_no_user(
-    mock_bot_token, message_handler_with_media, command_handler
-) -> None:
-    """🔴 RED: Тест обработки голосового сообщения без пользователя."""
+async def test_handle_voice_no_user(telegram_bot, message_handler_with_media) -> None:
+    """Тест обработки голосового сообщения без пользователя."""
     from unittest.mock import AsyncMock, Mock
 
-    bot = TelegramBot(mock_bot_token, message_handler_with_media, command_handler)
+
+    bot = TelegramBot(
+        telegram_bot.bot.token,
+        message_handler_with_media,
+        telegram_bot.command_handler,
+        telegram_bot.session_factory,
+    )
 
     # Arrange - сообщение без from_user
     mock_voice_message = AsyncMock()
@@ -299,23 +313,30 @@ async def test_handle_voice_no_user(
 
 
 @pytest.mark.asyncio
-async def test_handle_voice_error(
-    mock_bot_token, message_handler_with_media, command_handler
-) -> None:
-    """🔴 RED: Тест обработки ошибки при обработке голосового сообщения."""
+async def test_handle_voice_error(telegram_bot, message_handler_with_media) -> None:
+    """Тест обработки ошибки при обработке голосового сообщения."""
     from unittest.mock import AsyncMock, Mock
+
 
     # Arrange - message_handler выбросит ошибку
     message_handler_with_media.handle_voice_message = AsyncMock(
         side_effect=Exception("Voice processing error")
     )
 
-    bot = TelegramBot(mock_bot_token, message_handler_with_media, command_handler)
+    bot = TelegramBot(
+        telegram_bot.bot.token,
+        message_handler_with_media,
+        telegram_bot.command_handler,
+        telegram_bot.session_factory,
+    )
 
     mock_voice_message = AsyncMock()
     mock_voice_message.from_user = Mock()
     mock_voice_message.from_user.id = 12345
     mock_voice_message.from_user.username = "testuser"
+    mock_voice_message.from_user.first_name = "Test"
+    mock_voice_message.from_user.last_name = "User"
+    mock_voice_message.from_user.language_code = "en"
     mock_voice_message.voice = Mock(file_id="voice_id")
     mock_voice_message.answer = AsyncMock()
 

@@ -5,7 +5,10 @@
 Это реализация Dependency Inversion Principle (SOLID).
 """
 
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
+
+if TYPE_CHECKING:
+    from .models import User
 
 
 class LLMProvider(Protocol):
@@ -150,5 +153,48 @@ class MediaProvider(Protocol):
 
         Raises:
             Exception: Если произошла ошибка при транскрибации
+        """
+        ...
+
+
+class UserStorage(Protocol):
+    """
+    Контракт для хранилищ пользователей.
+
+    Любой класс, реализующий эти методы, может использоваться для работы с пользователями.
+    Все методы асинхронные для поддержки персистентного хранения в БД.
+    """
+
+    async def get_or_create_user(
+        self,
+        telegram_id: int,
+        username: str | None = None,
+        first_name: str | None = None,
+        last_name: str | None = None,
+        language_code: str | None = None,
+    ) -> "User":
+        """
+        Получить пользователя или создать нового.
+
+        Автоматически обновляет last_seen и данные пользователя при каждом вызове.
+
+        Args:
+            telegram_id: ID пользователя Telegram
+            username: Username из Telegram (может быть None)
+            first_name: Имя пользователя (может быть None)
+            last_name: Фамилия пользователя (может быть None)
+            language_code: Код языка (может быть None)
+
+        Returns:
+            Объект User (существующий или новый)
+        """
+        ...
+
+    async def update_last_seen(self, telegram_id: int) -> None:
+        """
+        Обновить время последнего взаимодействия пользователя.
+
+        Args:
+            telegram_id: ID пользователя Telegram
         """
         ...

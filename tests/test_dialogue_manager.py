@@ -34,6 +34,18 @@ async def test_get_history_empty(dialogue_manager: DialogueStorage) -> None:
 async def test_max_history_limit(test_session_factory) -> None:  # type: ignore[no-untyped-def]
     """Тест ограничения количества сообщений"""
     from src.bot.dialogue_manager import DialogueManager
+    from src.bot.repository import UserRepository
+
+    # Создаем пользователя перед тестом
+    async with test_session_factory() as session:
+        user_repo = UserRepository(session)
+        await user_repo.get_or_create_user(
+            telegram_id=123,
+            username="testuser123",
+            first_name="Test",
+            last_name="User",
+            language_code="en",
+        )
 
     # Создаем DialogueManager с max_history=3
     dm = DialogueManager(session_factory=test_session_factory, max_history=3)

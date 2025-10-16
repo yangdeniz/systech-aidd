@@ -9,8 +9,6 @@ from .dialogue_manager import DialogueManager
 from .llm_client import LLMClient
 from .media_processor import MediaProcessor
 from .message_handler import MessageHandler
-from .models import Base
-from .repository import MessageRepository
 
 
 def setup_logging() -> None:
@@ -85,9 +83,11 @@ async def main() -> None:
     command_handler = CommandHandler(dialogue_manager)
     logging.info("CommandHandler initialized")
 
-    # Создаем бота
-    telegram_bot = TelegramBot(config.telegram_token, message_handler, command_handler)
-    logging.info("Telegram bot initialized")
+    # Создаем бота с session_factory для отслеживания пользователей
+    telegram_bot = TelegramBot(
+        config.telegram_token, message_handler, command_handler, session_factory
+    )
+    logging.info("Telegram bot initialized with user tracking")
 
     try:
         logging.info("Bot is starting polling...")
