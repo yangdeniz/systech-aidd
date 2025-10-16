@@ -58,6 +58,13 @@ HomeGuru — это MVP (Minimum Viable Product) Telegram-бота, которы
 
 Подробная документация проекта находится в директории `docs/`:
 
+**Практические гайды:** [`docs/guides/`](docs/guides/)
+- 🚀 [Getting Started](docs/guides/01-getting-started.md) - установка и запуск за 15 минут
+- 👨‍💻 [Developer Quickstart](docs/guides/02-developer-quickstart.md) - первый день разработчика
+- 🏗 [Architecture Overview](docs/guides/03-architecture-overview.md) - обзор архитектуры с диаграммами
+- 📊 [Visual System Overview](docs/guides/04-visual-system-overview.md) - 13 диаграмм системы
+- ⚙️ [Configuration Guide](docs/guides/07-configuration.md) - настройка и секреты
+
 **Основные документы:**
 - [`docs/idea.md`](docs/idea.md) - концепция HomeGuru и основные идеи
 - [`docs/vision.md`](docs/vision.md) - техническое видение и детальная спецификация
