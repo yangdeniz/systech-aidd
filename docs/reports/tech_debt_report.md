@@ -469,10 +469,12 @@ docs/
 │   └── ADR-01.md           # Architecture Decision Records
 ├── conventions.md          # Соглашения по коду
 ├── idea.md                 # Идея проекта
-├── tasklist.md             # План разработки
-├── tasklist_tech_debt.md   # План Tech Debt
+├── roadmap.md              # Roadmap проекта
+├── tasklists/              # Тасклисты спринтов
+│   ├── tasklist-sprint-0.md
+│   └── tasklist-tech-debt-sprint-0.md
 ├── reports/
-│   └── tech_debt_report.md # Отчёт по устранению Tech Debt [NEW]
+│   └── tech_debt_report.md # Отчёт по устранению Tech Debt
 ├── reviews/
 │   └── review-001.md       # Code review отчёты
 ├── vision.md               # Техническое видение
@@ -631,7 +633,7 @@ docs/
 - [x] 1 класс = 1 файл
 
 ### Документация
-- [x] Обновлен tasklist_tech_debt.md
+- [x] Обновлен tasklist-tech-debt-sprint-0.md
 - [x] Создан tech_debt_report.md
 - [x] Docstrings во всех классах
 - [x] Type hints как документация

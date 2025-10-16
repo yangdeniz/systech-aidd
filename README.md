@@ -68,12 +68,12 @@ HomeGuru — это MVP (Minimum Viable Product) Telegram-бота, которы
 **Основные документы:**
 - [`docs/idea.md`](docs/idea.md) - концепция HomeGuru и основные идеи
 - [`docs/vision.md`](docs/vision.md) - техническое видение и детальная спецификация
-- [`docs/tasklist.md`](docs/tasklist.md) - пошаговый план разработки и текущий прогресс
-- [`docs/tasklist_tech_debt.md`](docs/tasklist_tech_debt.md) - план улучшения качества кода (завершено)
+- [`docs/roadmap.md`](docs/roadmap.md) - roadmap проекта по спринтам
 - [`docs/conventions.md`](docs/conventions.md) - соглашения и принципы разработки
 - [`docs/workflow.md`](docs/workflow.md) - процесс выполнения работ
 
 **Подпапки:**
+- [`docs/tasklists/`](docs/tasklists/) - тасклисты спринтов (Sprint-0, Sprint-1, ...)
 - [`docs/reports/`](docs/reports/) - отчеты о выполненных работах (tech debt)
 - [`docs/reviews/`](docs/reviews/) - результаты code review проекта
 - [`docs/addrs/`](docs/addrs/) - архитектурные решения (Architecture Decision Records)

@@ -37,7 +37,8 @@ systech-aidd/
 │
 ├── docs/              # Документация
 │   ├── vision.md            # Техническое видение
-│   ├── tasklist.md          # План итераций
+│   ├── roadmap.md           # Roadmap по спринтам
+│   ├── tasklists/           # Тасклисты спринтов
 │   ├── conventions.md       # Соглашения разработки
 │   ├── workflow.md          # Процесс работы
 │   └── guides/              # Гайды

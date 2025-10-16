@@ -853,6 +853,7 @@ class MessageHandler:
 - Простота остается главным приоритетом
 
 **Документация:**
+- [`docs/roadmap.md`](roadmap.md) - roadmap проекта по спринтам
 - [`docs/reports/tech_debt_report.md`](reports/tech_debt_report.md) - детальный отчет о выполненных улучшениях
-- [`docs/tasklist_tech_debt.md`](tasklist_tech_debt.md) - план и результаты Tech Debt итераций
+- [`docs/tasklists/tasklist-tech-debt-sprint-0.md`](tasklists/tasklist-tech-debt-sprint-0.md) - план и результаты Tech Debt итераций Sprint-0
 
