@@ -46,8 +46,8 @@
 - Простые и понятные имена классов и методов
 - Минимум абстракций - Protocol только для ключевых зависимостей (DIP)
 - Код должен быть понятен без документации (но с type hints)
-- In-memory хранение данных (без БД)
-- Синхронная обработка сообщений (один пользователь = один диалог)
+- Персистентное хранение (PostgreSQL + SQLAlchemy ORM + Alembic)
+- Асинхронная обработка через aiogram и async SQLAlchemy
 - Все методы типизированы - параметры и возвращаемые значения
 - Автоматические проверки качества через `make quality`
 
@@ -105,29 +105,33 @@ systech-aidd/
 
 ### Описание модулей
 
-**Текущее состояние (после итераций 1-7 и Tech Debt TD-1 до TD-5):**
+**Текущее состояние (после Sprint-0, Sprint-1, Sprint-2):**
 - **main.py** - точка входа, запуск приложения, создание компонентов
 - **bot.py** - инфраструктура Telegram (aiogram), делегирование в handlers
 - **message_handler.py** - бизнес-логика обработки сообщений
 - **command_handler.py** - обработка команд бота (/start, /reset, /help, /role)
 - **llm_client.py** - работа с мультимодальными моделями через OpenRouter
-- **dialogue_manager.py** - управление контекстом диалогов (in-memory)
+- **dialogue_manager.py** - управление контекстом диалогов через Repository
+- **repository.py** - Repository pattern (MessageRepository, UserRepository)
+- **models.py** - SQLAlchemy ORM модели (Message, User с relationships)
+- **database.py** - фабрика engine и session для PostgreSQL
 - **config.py** - загрузка конфигурации из .env с валидацией
-- **interfaces.py** - Protocol интерфейсы (LLMProvider, DialogueStorage)
+- **interfaces.py** - Protocol интерфейсы (LLMProvider, DialogueStorage, MediaProvider, UserStorage)
+- **media_processor.py** - обработка фотографий и аудио через Faster-Whisper
 - **system_prompt.txt** - системный промпт с ролью HomeGuru (ИИ-дизайнер)
 
-**В разработке (итерации 8-9):**
-- **media_processor.py** - расширение для обработки аудио через Faster-Whisper [итерация 8]
-- **langsmith интеграция** - мониторинг LLM запросов через декораторы [итерация 9]
+**В разработке (Sprint-3):**
+- **langsmith интеграция** - мониторинг LLM запросов через декораторы
 
 ### Принципы организации
 - 1 класс = 1 файл (обязательно)
 - Простая плоская структура без вложенных пакетов
-- **9 модулей текущего состояния** (после итераций 1-7 и Tech Debt TD-1 до TD-5)
+- **12 модулей текущего состояния** (после Sprint-0, Sprint-1, Sprint-2)
 - Системный промпт вынесен в отдельный файл system_prompt.txt
 - ✅ Protocol интерфейсы для слабой связанности
 - ✅ Разделение инфраструктуры и бизнес-логики
 - ✅ SOLID принципы применены: SRP и DIP
+- ✅ Repository pattern для работы с БД
 - ✅ Type hints обязательны, mypy strict mode
 - ✅ Автоматизированные проверки качества (Ruff, Mypy, Pytest)
 
@@ -137,25 +141,34 @@ systech-aidd/
 
 ### Основные компоненты и их взаимодействие
 
-> **Примечание:** Схема показывает текущую архитектуру после завершения рефакторинга (TD-4, TD-5 завершены 2025-10-11). Применены SOLID принципы: SRP для разделения ответственностей, DIP через Protocol интерфейсы.
+> **Примечание:** Схема показывает текущую архитектуру после завершения Sprint-0, Sprint-1, Sprint-2 (обновлено 2025-10-16). Применены SOLID принципы: SRP для разделения ответственностей, DIP через Protocol интерфейсы, Repository pattern для работы с БД.
 
 **Текущая архитектура:**
 ```
 User (Telegram: текст/фото/аудио) 
     ↓
 TelegramBot (aiogram инфраструктура)
-    ↓ (команды)          ↓ (сообщения)
-CommandHandler      MessageHandler
-    ↓                    ↓
-    |            MediaProcessor (фото/аудио)
-    |                    ↓
-    |←──→ DialogueStorage (Protocol) ←── DialogueManager
-                         ↓
-              LLMProvider (Protocol) ←── LLMClient
-                         ↓
-              OpenRouter API + LangSmith
-                         ↓
-                    Response → User
+    ↓ (команды)                    ↓ (сообщения)
+CommandHandler                MessageHandler
+    ↓                                  ↓
+    |                          MediaProcessor (фото/аудио)
+    |                                  ↓
+    |                          LLMProvider (Protocol) ←── LLMClient
+    |                                  ↓                        ↓
+    |                          OpenRouter API          LangSmith (мониторинг)
+    |                                  ↓
+    |←────────→ DialogueStorage (Protocol) ←── DialogueManager
+                        ↓
+            MessageRepository / UserRepository
+                        ↓
+                   Models (ORM)
+              (Message, User entities)
+                        ↓
+                Database (async engine)
+                        ↓
+           PostgreSQL (персистентное хранение)
+                        ↓
+                Alembic (миграции)
 ```
 
 ### Описание компонентов
@@ -190,29 +203,51 @@ CommandHandler      MessageHandler
 - Локальная обработка аудио без внешних API вызовов
 - Возвращает обработанные данные
 
-**5. DialogueManager** (dialogue_manager.py) - Хранилище диалогов
-- Хранит историю диалогов в памяти (dict: user_id → messages)
-- Добавляет сообщения в историю с ограничением размера
-- Предоставляет историю для формирования контекста
-- Очищает историю по запросу
+**5. DialogueManager** (dialogue_manager.py) - Управление диалогами
+- Координирует работу с MessageRepository для персистентного хранения
+- Добавляет сообщения в историю через Repository
+- Предоставляет историю для формирования контекста из БД
+- Очищает историю через soft delete
 - Реализует `DialogueStorage` Protocol
 
-**6. LLMClient** (llm_client.py) - Провайдер LLM
+**6. MessageRepository / UserRepository** (repository.py) - Repository pattern
+- Инкапсулирует работу с базой данных (async SQLAlchemy)
+- MessageRepository: add_message, get_history, clear_history (soft delete)
+- UserRepository: get_or_create_user, update_last_seen, get_active_users_count
+- Управление async session и транзакциями
+- Возвращает бизнес-объекты, скрывает детали ORM
+
+**7. Models** (models.py) - ORM модели
+- `Message` модель: user_id, role, content (JSONB), created_at, char_length, is_deleted
+- `User` модель: telegram_id, username, first/last name, language_code, first/last seen
+- SQLAlchemy DeclarativeBase с relationships
+- Поддержка мультимодального контента через JSONB
+- Индексы для оптимизации запросов
+
+**8. Database** (database.py) - Слой базы данных
+- Создание async engine для PostgreSQL
+- Session factory с async_sessionmaker
+- Управление соединениями и транзакциями
+- Интеграция с Alembic для миграций
+
+**9. LLMClient** (llm_client.py) - Провайдер LLM
 - Отправляет мультимодальные запросы в OpenRouter API
 - Использует openai client для работы с моделями, поддерживающими Vision
 - Интегрирован с LangSmith для мониторинга всех запросов
 - Возвращает ответ от LLM
 - Реализует `LLMProvider` Protocol
 
-**7. Config** (config.py) - Конфигурация
-- Загружает настройки из .env с валидацией
+**10. Config** (config.py) - Конфигурация
+- Загружает настройки из .env с валидацией (включая DATABASE_URL)
 - Загружает системный промпт из system_prompt.txt
 - Предоставляет конфигурацию всем модулям
 - Выбрасывает `ValueError` при отсутствии обязательных параметров
 
-**8. Interfaces** (interfaces.py) - Protocol интерфейсы
+**11. Interfaces** (interfaces.py) - Protocol интерфейсы
 - `LLMProvider` - контракт для провайдеров LLM
 - `DialogueStorage` - контракт для хранилищ диалогов
+- `MediaProvider` - контракт для обработки медиа
+- `UserStorage` - контракт для работы с пользователями
 - Обеспечивает Dependency Inversion (SOLID DIP)
 - Позволяет легко заменять имплементации
 
@@ -221,35 +256,68 @@ CommandHandler      MessageHandler
 **Текстовое сообщение:**
 1. Пользователь отправляет текст в Telegram
 2. TelegramBot получает сообщение
-3. DialogueManager добавляет сообщение в историю
-4. DialogueManager формирует запрос с контекстом
-5. LLMClient отправляет запрос в OpenRouter (с трейсингом в LangSmith)
-6. Ответ возвращается через цепочку обратно
-7. TelegramBot отправляет ответ пользователю
+3. UserRepository регистрирует/обновляет пользователя (get_or_create_user, last_seen)
+4. MessageHandler получает сообщение для обработки
+5. DialogueManager через MessageRepository сохраняет сообщение в БД
+6. MessageRepository загружает историю из PostgreSQL (последние 20 сообщений)
+7. LLMClient отправляет запрос с контекстом в OpenRouter (с трейсингом в LangSmith)
+8. Ответ от LLM сохраняется в БД через MessageRepository
+9. TelegramBot отправляет ответ пользователю
 
 **Фото:**
 1. Пользователь отправляет фото интерьера
 2. TelegramBot получает фото
-3. MediaProcessor скачивает и обрабатывает изображение
-4. DialogueManager добавляет изображение в контекст
-5. LLMClient отправляет мультимодальный запрос (текст + изображение)
-6. HomeGuru анализирует интерьер и дает рекомендации
-7. Ответ отправляется пользователю
+3. UserRepository обновляет метрики пользователя
+4. MediaProcessor скачивает и обрабатывает изображение в base64
+5. DialogueManager через MessageRepository сохраняет мультимодальное сообщение в БД (JSONB)
+6. LLMClient отправляет мультимодальный запрос (текст + изображение) в OpenRouter
+7. HomeGuru анализирует интерьер и дает рекомендации
+8. Ответ сохраняется в БД и отправляется пользователю
 
 **Голосовое сообщение:**
 1. Пользователь отправляет голосовое сообщение
 2. TelegramBot получает аудио
-3. MediaProcessor скачивает и транскрибирует в текст
-4. Текст обрабатывается как обычное текстовое сообщение
-5. Ответ отправляется пользователю
+3. UserRepository обновляет активность пользователя
+4. MediaProcessor скачивает и транскрибирует в текст через Faster-Whisper (локально)
+5. Транскрибированный текст обрабатывается как обычное текстовое сообщение
+6. Сообщение и ответ сохраняются в PostgreSQL
+7. Ответ отправляется пользователю
 
 ---
 
 ## 5. Модель данных
 
-### Структуры данных
+### База данных (PostgreSQL)
 
-**Текстовое сообщение (Message)**
+**Message модель** (таблица `messages`)
+```python
+class Message(Base):
+    id: int                    # Primary key
+    user_id: int               # Telegram user ID (indexed)
+    role: str                  # "user" или "assistant" или "system"
+    content: dict              # JSONB - текст или мультимодальный контент
+    created_at: datetime       # Timestamp (UTC with timezone)
+    char_length: int           # Длина контента в символах
+    is_deleted: bool           # Soft delete флаг
+```
+
+**User модель** (таблица `users`)
+```python
+class User(Base):
+    id: int                    # Primary key
+    telegram_id: int           # Telegram user ID (unique, indexed)
+    username: str | None       # @username из Telegram
+    first_name: str | None     # Имя пользователя
+    last_name: str | None      # Фамилия пользователя
+    language_code: str | None  # Язык интерфейса (ru, en, etc.)
+    first_seen: datetime       # Первое взаимодействие
+    last_seen: datetime        # Последнее взаимодействие
+    is_active: bool            # Активен ли пользователь
+```
+
+### Структуры данных в приложении
+
+**Текстовое сообщение**
 ```python
 {
     "role": str,      # "user" или "assistant" или "system"
@@ -257,7 +325,7 @@ CommandHandler      MessageHandler
 }
 ```
 
-**Мультимодальное сообщение (Message с изображением)**
+**Мультимодальное сообщение (с изображением)**
 ```python
 {
     "role": "user",
@@ -269,36 +337,25 @@ CommandHandler      MessageHandler
         {
             "type": "image_url",
             "image_url": {
-                "url": str  # base64 или URL изображения
+                "url": str  # base64 data URL изображения
             }
         }
     ]
 }
 ```
 
-**Диалог (Dialogue)**
-```python
-{
-    user_id: int → [Message]  # список сообщений для каждого пользователя
-}
-```
-
-### Хранение в DialogueManager
-```python
-class DialogueManager:
-    def __init__(self):
-        self.dialogues = {}  # {user_id: [messages]}
-```
-
 ### Особенности
-- Хранение **только в памяти** (dict)
-- При перезапуске бота история теряется
+- **Персистентное хранение** в PostgreSQL
+- История диалогов сохраняется между перезапусками
+- Soft delete для сохранения данных при очистке истории
 - Формат совместим с OpenAI API (role + content)
-- Никаких дополнительных полей (timestamp, id и т.д.)
+- Мультимодальный контент хранится в JSONB
+- Индексы для быстрых запросов по user_id и created_at
+- Async операции через SQLAlchemy 2.0+
 
 ### Ограничения для MVP
-- Максимум последних 10 пар вопрос-ответ (20 сообщений) на пользователя
-- Простое усечение старых сообщений при превышении лимита
+- Максимум последних 20 сообщений на пользователя при загрузке истории
+- Soft delete вместо физического удаления (для возможного восстановления)
 
 ---
 
