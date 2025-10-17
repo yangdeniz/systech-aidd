@@ -31,7 +31,7 @@
 | **F-Sprint-2** | Инициализация Frontend проекта | ✅ Completed | [📋 F-Sprint-2 Plan](plans/s2-init-plan.md) |
 | **F-Sprint-3** | Реализация dashboard | ✅ Completed | [📋 F-Sprint-3 Plan](plans/s3-dashboard-plan.md) |
 | **F-Sprint-4** | Реализация ИИ-чата | ✅ Completed | [📋 F-Sprint-4 Plan](plans/s4-ai-chat-plan.md) |
-| **F-Sprint-5** | Переход с MockAPI на реальный API | ✅ Completed | [📋 F-Sprint-5 Plan](../../docs/plans/f-sprint-5-real-api.md) |
+| **F-Sprint-5** | Переход с MockAPI на реальный API | ✅ Completed | [📋 F-Sprint-5 Plan](plans/s5-real-api-plan.md) |
 
 ---
 
@@ -195,7 +195,7 @@
 - ✅ 100% обратная совместимость API
 - ✅ Production-ready deployment
 
-[Подробный отчет](../../docs/plans/f-sprint-5-real-api.md)
+[Подробный отчет](plans/s5-real-api-plan.md)
 
 ---
 
