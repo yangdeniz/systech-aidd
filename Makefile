@@ -50,3 +50,38 @@ api-test:
 api-docs:
 	@echo Opening API documentation...
 	@cmd /c start http://localhost:8000/docs
+
+# Frontend commands
+.PHONY: frontend-install frontend-dev frontend-build frontend-test frontend-lint frontend-format frontend-quality
+
+frontend-install:
+	@echo Installing frontend dependencies...
+	cd frontend/app && pnpm install
+
+frontend-dev:
+	@echo Starting frontend development server...
+	cd frontend/app && pnpm run dev
+
+frontend-build:
+	@echo Building frontend for production...
+	cd frontend/app && pnpm run build
+
+frontend-test:
+	@echo Running frontend tests...
+	cd frontend/app && pnpm run test:ci
+
+frontend-lint:
+	@echo Linting frontend code...
+	cd frontend/app && pnpm run lint
+
+frontend-format:
+	@echo Formatting frontend code...
+	cd frontend/app && pnpm run format
+
+frontend-quality:
+	@echo Running frontend quality checks...
+	cd frontend/app && pnpm run quality
+
+# Combined quality check (backend + frontend)
+quality-all: quality frontend-quality
+	@echo All quality checks passed!
