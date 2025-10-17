@@ -2,10 +2,12 @@
 Тесты для FastAPI endpoints.
 
 Проверяет работу REST API для получения статистики дашборда.
+Использует testcontainers для изоляции от реальной БД.
+Требует запущенный Docker Desktop на Windows.
 """
 
 import pytest
-from fastapi.testclient import TestClient
+from httpx import ASGITransport, AsyncClient
 
 from src.api.main import app
 
@@ -14,30 +16,34 @@ class TestStatsAPI:
     """Тесты для Stats API endpoints."""
 
     @pytest.fixture
-    def client(self) -> TestClient:
-        """Создает тестовый клиент FastAPI."""
-        return TestClient(app)
+    async def client(self) -> AsyncClient:
+        """Создает тестовый async клиент FastAPI."""
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test", timeout=30.0
+        ) as client:
+            yield client
 
-    def test_root_endpoint(self, client: TestClient) -> None:
+    async def test_root_endpoint(self, client: AsyncClient) -> None:
         """Тест корневого endpoint."""
-        response = client.get("/")
+        response = await client.get("/")
         assert response.status_code == 200
         data = response.json()
         assert data["message"] == "HomeGuru Stats API"
         assert data["version"] == "0.2.0"
-        assert "mode" in data  # Новое поле в 0.2.0
+        assert "mode" in data
+        assert data["mode"] == "mock"  # Тесты используют mock режим (без БД)
         assert data["docs"] == "/docs"
 
-    def test_health_check(self, client: TestClient) -> None:
+    async def test_health_check(self, client: AsyncClient) -> None:
         """Тест health check endpoint."""
-        response = client.get("/health")
+        response = await client.get("/health")
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "healthy"
 
-    def test_get_stats_default_period(self, client: TestClient) -> None:
+    async def test_get_stats_default_period(self, client: AsyncClient) -> None:
         """Тест получения статистики с периодом по умолчанию (week)."""
-        response = client.get("/stats")
+        response = await client.get("/stats")
         assert response.status_code == 200
         data = response.json()
 
@@ -50,44 +56,45 @@ class TestStatsAPI:
         # Проверяем количество элементов
         assert len(data["metrics"]) == 4
         assert len(data["time_series"]) == 7  # week = 7 дней
+        # Mock генерирует 10 диалогов и 5 пользователей
         assert len(data["recent_dialogues"]) == 10
         assert len(data["top_users"]) == 5
 
-    def test_get_stats_day_period(self, client: TestClient) -> None:
+    async def test_get_stats_day_period(self, client: AsyncClient) -> None:
         """Тест получения статистики за день."""
-        response = client.get("/stats?period=day")
+        response = await client.get("/stats?period=day")
         assert response.status_code == 200
         data = response.json()
 
         assert len(data["metrics"]) == 4
         assert len(data["time_series"]) == 24  # day = 24 часа
 
-    def test_get_stats_week_period(self, client: TestClient) -> None:
+    async def test_get_stats_week_period(self, client: AsyncClient) -> None:
         """Тест получения статистики за неделю."""
-        response = client.get("/stats?period=week")
+        response = await client.get("/stats?period=week")
         assert response.status_code == 200
         data = response.json()
 
         assert len(data["metrics"]) == 4
         assert len(data["time_series"]) == 7  # week = 7 дней
 
-    def test_get_stats_month_period(self, client: TestClient) -> None:
+    async def test_get_stats_month_period(self, client: AsyncClient) -> None:
         """Тест получения статистики за месяц."""
-        response = client.get("/stats?period=month")
+        response = await client.get("/stats?period=month")
         assert response.status_code == 200
         data = response.json()
 
         assert len(data["metrics"]) == 4
         assert len(data["time_series"]) == 30  # month = 30 дней
 
-    def test_get_stats_invalid_period(self, client: TestClient) -> None:
+    async def test_get_stats_invalid_period(self, client: AsyncClient) -> None:
         """Тест с некорректным периодом."""
-        response = client.get("/stats?period=invalid")
+        response = await client.get("/stats?period=invalid")
         assert response.status_code == 422  # Validation error
 
-    def test_metrics_structure(self, client: TestClient) -> None:
+    async def test_metrics_structure(self, client: AsyncClient) -> None:
         """Тест структуры метрик в ответе."""
-        response = client.get("/stats?period=week")
+        response = await client.get("/stats?period=week")
         assert response.status_code == 200
         data = response.json()
 
@@ -104,9 +111,9 @@ class TestStatsAPI:
         assert "Avg Messages per Dialogue" in titles
         assert "Messages Today" in titles
 
-    def test_time_series_structure(self, client: TestClient) -> None:
+    async def test_time_series_structure(self, client: AsyncClient) -> None:
         """Тест структуры временного ряда в ответе."""
-        response = client.get("/stats?period=week")
+        response = await client.get("/stats?period=week")
         assert response.status_code == 200
         data = response.json()
 
@@ -116,12 +123,13 @@ class TestStatsAPI:
             assert isinstance(point["value"], int)
             assert point["value"] >= 0
 
-    def test_recent_dialogues_structure(self, client: TestClient) -> None:
+    async def test_recent_dialogues_structure(self, client: AsyncClient) -> None:
         """Тест структуры последних диалогов в ответе."""
-        response = client.get("/stats?period=week")
+        response = await client.get("/stats?period=week")
         assert response.status_code == 200
         data = response.json()
 
+        # Mock генерирует 10 диалогов
         assert len(data["recent_dialogues"]) == 10
 
         for dialogue in data["recent_dialogues"]:
@@ -132,12 +140,13 @@ class TestStatsAPI:
             assert isinstance(dialogue["message_count"], int)
             assert dialogue["message_count"] > 0
 
-    def test_top_users_structure(self, client: TestClient) -> None:
+    async def test_top_users_structure(self, client: AsyncClient) -> None:
         """Тест структуры топ пользователей в ответе."""
-        response = client.get("/stats?period=week")
+        response = await client.get("/stats?period=week")
         assert response.status_code == 200
         data = response.json()
 
+        # Mock генерирует 5 пользователей
         assert len(data["top_users"]) == 5
 
         for user in data["top_users"]:
@@ -148,18 +157,18 @@ class TestStatsAPI:
             assert isinstance(user["total_messages"], int)
             assert isinstance(user["dialogue_count"], int)
 
-    def test_response_content_type(self, client: TestClient) -> None:
+    async def test_response_content_type(self, client: AsyncClient) -> None:
         """Тест корректного content-type в ответе."""
-        response = client.get("/stats")
+        response = await client.get("/stats")
         assert response.status_code == 200
         assert "application/json" in response.headers["content-type"]
 
-    def test_openapi_docs_available(self, client: TestClient) -> None:
+    async def test_openapi_docs_available(self, client: AsyncClient) -> None:
         """Тест доступности OpenAPI документации."""
-        response = client.get("/docs")
+        response = await client.get("/docs")
         assert response.status_code == 200
 
-        response = client.get("/openapi.json")
+        response = await client.get("/openapi.json")
         assert response.status_code == 200
         openapi_schema = response.json()
         assert openapi_schema["info"]["title"] == "HomeGuru API"
