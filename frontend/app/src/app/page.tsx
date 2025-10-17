@@ -1,5 +1,10 @@
 "use client";
 
+import { ActivityChart } from "@/components/dashboard/ActivityChart";
+import { MetricCard } from "@/components/dashboard/MetricCard";
+import { RecentDialogues } from "@/components/dashboard/RecentDialogues";
+import { TopUsers } from "@/components/dashboard/TopUsers";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { useStats } from "@/hooks/useStats";
 import type { Period } from "@/types/api";
 import { useState } from "react";
@@ -26,30 +31,39 @@ export default function HomePage() {
     );
   }
 
+  if (!data) {
+    return null;
+  }
+
   return (
-    <main className="container mx-auto p-8">
-      <h1 className="text-4xl font-bold mb-8">HomeGuru Dashboard</h1>
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <label htmlFor="period-select" className="font-medium">
-            Period:
-          </label>
-          <select
-            id="period-select"
-            value={period}
-            onChange={(e) => setPeriod(e.target.value as Period)}
-            className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="day">Day</option>
-            <option value="week">Week</option>
-            <option value="month">Month</option>
-          </select>
+    <main className="min-h-screen bg-background">
+      <div className="container mx-auto p-4 md:p-8 space-y-8">
+        {/* Header with Title and Theme Toggle */}
+        <header className="flex items-center justify-between">
+          <h1 className="text-4xl font-bold">Dashboard</h1>
+          <ThemeToggle />
+        </header>
+
+        {/* Metrics Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {data.metrics.map((metric, idx) => (
+            <MetricCard
+              key={idx}
+              title={metric.title}
+              value={metric.value}
+              change_percent={metric.change_percent}
+              description={metric.description}
+            />
+          ))}
         </div>
-        <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
-          <h2 className="text-xl font-semibold mb-4">API Response:</h2>
-          <pre className="bg-white p-4 rounded border overflow-auto text-sm">
-            {JSON.stringify(data, null, 2)}
-          </pre>
+
+        {/* Activity Chart */}
+        <ActivityChart data={data.time_series} period={period} onPeriodChange={setPeriod} />
+
+        {/* Bottom Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <RecentDialogues dialogues={data.recent_dialogues} />
+          <TopUsers users={data.top_users} />
         </div>
       </div>
     </main>
