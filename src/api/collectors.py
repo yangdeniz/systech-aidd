@@ -2,11 +2,12 @@
 Реализации сборщиков статистики.
 
 MockStatCollector: генерирует реалистичные тестовые данные для разработки frontend.
-RealStatCollector: будет реализован в F-Sprint-5 для работы с PostgreSQL.
+RealStatCollector: реализация с интеграцией PostgreSQL для production использования.
 """
 
 import random
 from datetime import datetime, timedelta
+from typing import Any
 
 from .models import DialogueInfo, MetricCard, StatsResponse, TimeSeriesPoint, TopUser
 
@@ -245,3 +246,455 @@ class MockStatCollector:
         # Сортируем по убыванию total_messages
         users.sort(key=lambda u: u.total_messages, reverse=True)
         return users
+
+
+class RealStatCollector:
+    """
+    Реализация сборщика статистики с использованием PostgreSQL.
+
+    Получает реальные данные из базы данных для дашборда статистики.
+    Использует SQLAlchemy async ORM для выполнения запросов.
+
+    Особенности:
+    - Интеграция с существующими User и Message моделями
+    - Оптимизированные SQL запросы с агрегацией
+    - Поддержка различных периодов (day/week/month)
+    - Возвращает данные в том же формате, что и MockStatCollector
+    """
+
+    def __init__(self, session_factory: Any) -> None:
+        """
+        Инициализация Real сборщика.
+
+        Args:
+            session_factory: Фабрика для создания async сессий SQLAlchemy
+        """
+        self.session_factory = session_factory
+
+    async def get_stats(self, period: str) -> StatsResponse:
+        """
+        Получить реальную статистику за указанный период из базы данных.
+
+        Args:
+            period: Период для статистики ('day', 'week', 'month')
+
+        Returns:
+            StatsResponse с данными из БД
+
+        Raises:
+            ValueError: Если указан некорректный период
+        """
+        if period not in ("day", "week", "month"):
+            raise ValueError(f"Invalid period: {period}. Must be 'day', 'week', or 'month'")
+
+        async with self.session_factory() as session:
+            # Импортируем модели здесь чтобы избежать циклических импортов
+            from ..bot.models import Message, User
+
+            # Собираем все данные
+            metrics = await self._generate_metrics(session, User, Message, period)
+            time_series = await self._generate_time_series(session, Message, period)
+            recent_dialogues = await self._generate_recent_dialogues(session, User, Message)
+            top_users = await self._generate_top_users(session, User, Message)
+
+            return StatsResponse(
+                metrics=metrics,
+                time_series=time_series,
+                recent_dialogues=recent_dialogues,
+                top_users=top_users,
+            )
+
+    async def _generate_metrics(
+        self,
+        session: Any,
+        User: Any,
+        Message: Any,
+        period: str,  # noqa: N803
+    ) -> list[MetricCard]:
+        """
+        Генерирует 4 карточки метрик из базы данных.
+
+        Args:
+            session: Async сессия SQLAlchemy
+            User: Модель пользователя (класс)
+            Message: Модель сообщения (класс)
+            period: Период для расчета метрик
+
+        Returns:
+            Список из 4 MetricCard
+        """  # noqa: N803
+        from sqlalchemy import func, select
+
+        now = datetime.now()
+
+        # Рассчитываем временной диапазон для текущего и предыдущего периодов
+        period_deltas = {
+            "day": timedelta(days=1),
+            "week": timedelta(days=7),
+            "month": timedelta(days=30),
+        }
+        current_period_start = now - period_deltas[period]
+        previous_period_start = current_period_start - period_deltas[period]
+
+        # 1. Total Dialogues - количество уникальных user_id с сообщениями
+        current_dialogues = await session.scalar(
+            select(func.count(func.distinct(Message.user_id)))
+            .where(Message.created_at >= current_period_start)
+            .where(Message.is_deleted == False)  # noqa: E712
+        )
+        previous_dialogues = await session.scalar(
+            select(func.count(func.distinct(Message.user_id)))
+            .where(Message.created_at >= previous_period_start)
+            .where(Message.created_at < current_period_start)
+            .where(Message.is_deleted == False)  # noqa: E712
+        )
+        dialogues_change = self._calculate_change_percent(
+            current_dialogues or 0, previous_dialogues or 0
+        )
+
+        # 2. Active Users - количество активных пользователей
+        active_users = await session.scalar(
+            select(func.count()).select_from(User).where(User.is_active == True)  # noqa: E712
+        )
+        # Для изменения смотрим на количество пользователей, активных в предыдущем периоде
+        previous_active = await session.scalar(
+            select(func.count(func.distinct(Message.user_id)))
+            .where(Message.created_at >= previous_period_start)
+            .where(Message.created_at < current_period_start)
+            .where(Message.is_deleted == False)  # noqa: E712
+        )
+        active_users_change = self._calculate_change_percent(
+            active_users or 0, previous_active or 0
+        )
+
+        # 3. Avg Messages per Dialogue
+        total_messages = await session.scalar(
+            select(func.count())
+            .select_from(Message)
+            .where(Message.created_at >= current_period_start)
+            .where(Message.is_deleted == False)  # noqa: E712
+        )
+        avg_messages = (total_messages or 0) / max(current_dialogues or 1, 1)
+
+        # Для предыдущего периода
+        prev_total_messages = await session.scalar(
+            select(func.count())
+            .select_from(Message)
+            .where(Message.created_at >= previous_period_start)
+            .where(Message.created_at < current_period_start)
+            .where(Message.is_deleted == False)  # noqa: E712
+        )
+        prev_avg_messages = (prev_total_messages or 0) / max(previous_dialogues or 1, 1)
+        avg_messages_change = self._calculate_change_percent(avg_messages, prev_avg_messages)
+
+        # 4. Messages Today
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        yesterday_start = today_start - timedelta(days=1)
+
+        messages_today = await session.scalar(
+            select(func.count())
+            .select_from(Message)
+            .where(Message.created_at >= today_start)
+            .where(Message.is_deleted == False)  # noqa: E712
+        )
+        messages_yesterday = await session.scalar(
+            select(func.count())
+            .select_from(Message)
+            .where(Message.created_at >= yesterday_start)
+            .where(Message.created_at < today_start)
+            .where(Message.is_deleted == False)  # noqa: E712
+        )
+        messages_today_change = self._calculate_change_percent(
+            messages_today or 0, messages_yesterday or 0
+        )
+
+        return [
+            MetricCard(
+                title="Total Dialogues",
+                value=current_dialogues or 0,
+                change_percent=round(dialogues_change, 1),
+                description=self._get_trend_description(dialogues_change, "dialogues"),
+            ),
+            MetricCard(
+                title="Active Users",
+                value=active_users or 0,
+                change_percent=round(active_users_change, 1),
+                description=self._get_trend_description(active_users_change, "users"),
+            ),
+            MetricCard(
+                title="Avg Messages per Dialogue",
+                value=str(round(avg_messages, 1)),
+                change_percent=round(avg_messages_change, 1),
+                description=self._get_trend_description(avg_messages_change, "engagement"),
+            ),
+            MetricCard(
+                title="Messages Today",
+                value=messages_today or 0,
+                change_percent=round(messages_today_change, 1),
+                description=self._get_trend_description(messages_today_change, "activity"),
+            ),
+        ]
+
+    async def _generate_time_series(
+        self,
+        session: Any,
+        Message: Any,
+        period: str,  # noqa: N803
+    ) -> list[TimeSeriesPoint]:
+        """
+        Генерирует временной ряд для графика активности из базы данных.
+
+        Args:
+            session: Async сессия SQLAlchemy
+            Message: Модель сообщения (класс)
+            period: Период ('day' = 24 часа, 'week' = 7 дней, 'month' = 30 дней)
+
+        Returns:
+            Список TimeSeriesPoint с реальными данными
+        """  # noqa: N803
+        from sqlalchemy import func, select
+
+        now = datetime.now()
+        points: list[TimeSeriesPoint] = []
+
+        if period == "day":
+            # Последние 24 часа (почасовая разбивка)
+            for i in range(24):
+                hour_start = (now - timedelta(hours=23 - i)).replace(
+                    minute=0, second=0, microsecond=0
+                )
+                hour_end = hour_start + timedelta(hours=1)
+
+                count = await session.scalar(
+                    select(func.count())
+                    .select_from(Message)
+                    .where(Message.created_at >= hour_start)
+                    .where(Message.created_at < hour_end)
+                    .where(Message.is_deleted == False)  # noqa: E712
+                )
+
+                points.append(
+                    TimeSeriesPoint(
+                        date=hour_start.strftime("%Y-%m-%d %H:00"),
+                        value=count or 0,
+                    )
+                )
+
+        elif period == "week":
+            # Последние 7 дней (ежедневная разбивка)
+            for i in range(7):
+                day_start = (now - timedelta(days=6 - i)).replace(
+                    hour=0, minute=0, second=0, microsecond=0
+                )
+                day_end = day_start + timedelta(days=1)
+
+                count = await session.scalar(
+                    select(func.count())
+                    .select_from(Message)
+                    .where(Message.created_at >= day_start)
+                    .where(Message.created_at < day_end)
+                    .where(Message.is_deleted == False)  # noqa: E712
+                )
+
+                points.append(
+                    TimeSeriesPoint(
+                        date=day_start.strftime("%Y-%m-%d"),
+                        value=count or 0,
+                    )
+                )
+
+        else:  # month
+            # Последние 30 дней (ежедневная разбивка)
+            for i in range(30):
+                day_start = (now - timedelta(days=29 - i)).replace(
+                    hour=0, minute=0, second=0, microsecond=0
+                )
+                day_end = day_start + timedelta(days=1)
+
+                count = await session.scalar(
+                    select(func.count())
+                    .select_from(Message)
+                    .where(Message.created_at >= day_start)
+                    .where(Message.created_at < day_end)
+                    .where(Message.is_deleted == False)  # noqa: E712
+                )
+
+                points.append(
+                    TimeSeriesPoint(
+                        date=day_start.strftime("%Y-%m-%d"),
+                        value=count or 0,
+                    )
+                )
+
+        return points
+
+    async def _generate_recent_dialogues(
+        self,
+        session: Any,
+        User: Any,
+        Message: Any,  # noqa: N803
+    ) -> list[DialogueInfo]:
+        """
+        Генерирует список последних 10 диалогов из базы данных.
+
+        Args:
+            session: Async сессия SQLAlchemy
+            User: Модель пользователя (класс)
+            Message: Модель сообщения (класс)
+
+        Returns:
+            Список из 10 DialogueInfo, отсортированных по времени
+        """  # noqa: N803
+        from sqlalchemy import func, select
+
+        # Получаем последние 10 пользователей с их последними сообщениями и количеством
+        subquery = (
+            select(
+                Message.user_id,
+                func.max(Message.created_at).label("last_message_at"),
+                func.count(Message.id).label("message_count"),
+            )
+            .where(Message.is_deleted == False)  # noqa: E712
+            .group_by(Message.user_id)
+            .order_by(func.max(Message.created_at).desc())
+            .limit(10)
+            .subquery()
+        )
+
+        # Джойним с User чтобы получить username
+        query = (
+            select(
+                User.telegram_id,
+                User.username,
+                subquery.c.message_count,
+                subquery.c.last_message_at,
+            )
+            .join(subquery, User.telegram_id == subquery.c.user_id)
+            .order_by(subquery.c.last_message_at.desc())
+        )
+
+        result = await session.execute(query)
+        rows = result.all()
+
+        dialogues: list[DialogueInfo] = []
+        for row in rows:
+            dialogues.append(
+                DialogueInfo(
+                    user_id=row.telegram_id,
+                    username=row.username,
+                    message_count=row.message_count,
+                    last_message_at=row.last_message_at,
+                )
+            )
+
+        return dialogues
+
+    async def _generate_top_users(self, session: Any, User: Any, Message: Any) -> list[TopUser]:  # noqa: N803
+        """
+        Генерирует топ-5 пользователей по активности из базы данных.
+
+        Args:
+            session: Async сессия SQLAlchemy
+            User: Модель пользователя
+            Message: Модель сообщения
+
+        Returns:
+            Список из 5 TopUser, отсортированных по total_messages
+        """
+        from sqlalchemy import func, select
+
+        # Получаем топ-5 пользователей по количеству сообщений
+        # Также считаем количество "диалогов" (уникальных дней с активностью)
+        query = (
+            select(
+                User.telegram_id,
+                User.username,
+                func.count(Message.id).label("total_messages"),
+                func.count(func.distinct(func.date(Message.created_at))).label("dialogue_count"),
+            )
+            .join(Message, User.telegram_id == Message.user_id)
+            .where(Message.is_deleted == False)  # noqa: E712
+            .group_by(User.telegram_id, User.username)
+            .order_by(func.count(Message.id).desc())
+            .limit(5)
+        )
+
+        result = await session.execute(query)
+        rows = result.all()
+
+        users: list[TopUser] = []
+        for row in rows:
+            users.append(
+                TopUser(
+                    user_id=row.telegram_id,
+                    username=row.username,
+                    total_messages=row.total_messages,
+                    dialogue_count=row.dialogue_count,
+                )
+            )
+
+        return users
+
+    def _calculate_change_percent(self, current: float, previous: float) -> float:
+        """
+        Вычислить процент изменения.
+
+        Args:
+            current: Текущее значение
+            previous: Предыдущее значение
+
+        Returns:
+            Процент изменения
+        """
+        if previous == 0:
+            return 100.0 if current > 0 else 0.0
+        return ((current - previous) / previous) * 100
+
+    def _get_trend_description(self, change_percent: float, metric_type: str) -> str:
+        """
+        Получить описание тренда на основе процента изменения.
+
+        Args:
+            change_percent: Процент изменения
+            metric_type: Тип метрики (dialogues, users, engagement, activity)
+
+        Returns:
+            Текстовое описание тренда
+        """
+        if change_percent > 15:
+            descriptions = {
+                "dialogues": "Strong growth this period",
+                "users": "Growing user base",
+                "engagement": "Excellent user retention",
+                "activity": "High activity today",
+            }
+        elif change_percent > 5:
+            descriptions = {
+                "dialogues": "Steady increase",
+                "users": "Stable growth",
+                "engagement": "Good interaction rate",
+                "activity": "Steady performance increase",
+            }
+        elif change_percent > -5:
+            descriptions = {
+                "dialogues": "Stable performance",
+                "users": "Maintaining user base",
+                "engagement": "Consistent engagement",
+                "activity": "Normal fluctuation",
+            }
+        elif change_percent > -15:
+            descriptions = {
+                "dialogues": "Slight decline",
+                "users": "Minor decrease",
+                "engagement": "Needs attention",
+                "activity": "Below average",
+            }
+        else:
+            descriptions = {
+                "dialogues": "Significant drop",
+                "users": "Acquisition needs attention",
+                "engagement": "Engagement declining",
+                "activity": "Low activity",
+            }
+
+        return descriptions.get(metric_type, "Performance varies")

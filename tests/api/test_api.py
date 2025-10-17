@@ -24,7 +24,8 @@ class TestStatsAPI:
         assert response.status_code == 200
         data = response.json()
         assert data["message"] == "HomeGuru Stats API"
-        assert data["version"] == "0.1.0"
+        assert data["version"] == "0.2.0"
+        assert "mode" in data  # Новое поле в 0.2.0
         assert data["docs"] == "/docs"
 
     def test_health_check(self, client: TestClient) -> None:
@@ -161,5 +162,5 @@ class TestStatsAPI:
         response = client.get("/openapi.json")
         assert response.status_code == 200
         openapi_schema = response.json()
-        assert openapi_schema["info"]["title"] == "HomeGuru Stats API"
-        assert openapi_schema["info"]["version"] == "0.1.0"
+        assert openapi_schema["info"]["title"] == "HomeGuru API"
+        assert openapi_schema["info"]["version"] == "0.3.0"

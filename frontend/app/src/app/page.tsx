@@ -1,5 +1,7 @@
 "use client";
 
+import { ChatButton } from "@/components/chat/ChatButton";
+import { ChatWindow } from "@/components/chat/ChatWindow";
 import { ActivityChart } from "@/components/dashboard/ActivityChart";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { RecentDialogues } from "@/components/dashboard/RecentDialogues";
@@ -11,6 +13,7 @@ import { useState } from "react";
 
 export default function HomePage() {
   const [period, setPeriod] = useState<Period>("week");
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const { data, isLoading, error } = useStats(period);
 
   if (isLoading) {
@@ -66,6 +69,10 @@ export default function HomePage() {
           <TopUsers users={data.top_users} />
         </div>
       </div>
+
+      {/* Chat Components */}
+      <ChatButton onClick={() => setIsChatOpen(true)} isOpen={isChatOpen} />
+      <ChatWindow isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
     </main>
   );
 }

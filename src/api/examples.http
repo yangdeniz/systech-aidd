@@ -55,3 +55,100 @@ Accept: application/json
 ### 10. Alternative API Documentation (ReDoc)
 ### Open in browser: http://localhost:8000/redoc
 
+###
+
+### ============================================================================
+### Chat API Examples
+### ============================================================================
+
+### 11. Authenticate as admin
+POST http://localhost:8000/api/chat/auth
+Content-Type: application/json
+
+{
+  "password": "admin123"
+}
+
+### Response will contain JWT token for admin access
+
+###
+
+### 12. Send message in normal mode (HomeGuru)
+POST http://localhost:8000/api/chat/message
+Content-Type: application/json
+
+{
+  "message": "Привет! Помоги мне с дизайном спальни",
+  "mode": "normal",
+  "session_id": "test-session-123"
+}
+
+###
+
+### 13. Send message in admin mode (Statistics)
+POST http://localhost:8000/api/chat/message
+Content-Type: application/json
+
+{
+  "message": "Сколько всего пользователей в системе?",
+  "mode": "admin",
+  "session_id": "test-session-123"
+}
+
+### Response will include SQL query used
+
+###
+
+### 14. Get chat history for session
+GET http://localhost:8000/api/chat/history?session_id=test-session-123
+Accept: application/json
+
+###
+
+### 15. Clear chat history for session
+POST http://localhost:8000/api/chat/clear
+Content-Type: application/json
+
+{
+  "session_id": "test-session-123"
+}
+
+###
+
+### Example admin mode questions:
+
+### 16. Top active users
+POST http://localhost:8000/api/chat/message
+Content-Type: application/json
+
+{
+  "message": "Покажи топ-5 пользователей по активности",
+  "mode": "admin",
+  "session_id": "admin-session"
+}
+
+###
+
+### 17. Recent messages count
+POST http://localhost:8000/api/chat/message
+Content-Type: application/json
+
+{
+  "message": "Сколько сообщений было отправлено за последние 7 дней?",
+  "mode": "admin",
+  "session_id": "admin-session"
+}
+
+###
+
+### 18. User statistics
+POST http://localhost:8000/api/chat/message
+Content-Type: application/json
+
+{
+  "message": "Какая средняя длина сообщений?",
+  "mode": "admin",
+  "session_id": "admin-session"
+}
+
+###
