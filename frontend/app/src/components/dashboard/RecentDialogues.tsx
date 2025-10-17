@@ -31,23 +31,23 @@ export function RecentDialogues({ dialogues }: RecentDialoguesProps) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>User ID</TableHead>
+                <TableHead className="hidden sm:table-cell">User ID</TableHead>
                 <TableHead>Username</TableHead>
                 <TableHead className="text-right">Messages</TableHead>
-                <TableHead className="text-right">Last Message</TableHead>
+                <TableHead className="text-right hidden md:table-cell">Last Message</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {dialogues.map((dialogue) => (
                 <TableRow key={dialogue.user_id}>
-                  <TableCell className="font-mono">{dialogue.user_id}</TableCell>
-                  <TableCell>
+                  <TableCell className="hidden sm:table-cell font-mono text-xs sm:text-sm">{dialogue.user_id}</TableCell>
+                  <TableCell className="font-medium">
                     {dialogue.username || (
                       <span className="text-muted-foreground italic">Anonymous</span>
                     )}
                   </TableCell>
                   <TableCell className="text-right">{dialogue.message_count}</TableCell>
-                  <TableCell className="text-right font-mono text-sm">
+                  <TableCell className="text-right font-mono text-xs sm:text-sm hidden md:table-cell">
                     {format(parseISO(dialogue.last_message_at), "yyyy-MM-dd")}
                   </TableCell>
                 </TableRow>

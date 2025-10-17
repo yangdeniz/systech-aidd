@@ -30,27 +30,29 @@ export function TopUsers({ users }: TopUsersProps) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-16">Rank</TableHead>
-                <TableHead>User ID</TableHead>
+                <TableHead className="w-12 sm:w-16">Rank</TableHead>
+                <TableHead className="hidden sm:table-cell">User ID</TableHead>
                 <TableHead>Username</TableHead>
                 <TableHead className="text-right">Messages</TableHead>
-                <TableHead className="text-right">Dialogues</TableHead>
+                <TableHead className="text-right hidden md:table-cell">Dialogues</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {users.map((user, index) => (
                 <TableRow key={user.user_id}>
                   <TableCell>
-                    <Badge variant={index === 0 ? "default" : "secondary"}>#{index + 1}</Badge>
+                    <Badge variant={index === 0 ? "default" : "secondary"} className="text-xs">
+                      #{index + 1}
+                    </Badge>
                   </TableCell>
-                  <TableCell className="font-mono">{user.user_id}</TableCell>
-                  <TableCell>
+                  <TableCell className="hidden sm:table-cell font-mono text-xs sm:text-sm">{user.user_id}</TableCell>
+                  <TableCell className="font-medium">
                     {user.username || (
                       <span className="text-muted-foreground italic">Anonymous</span>
                     )}
                   </TableCell>
                   <TableCell className="text-right font-medium">{user.total_messages}</TableCell>
-                  <TableCell className="text-right">{user.dialogue_count}</TableCell>
+                  <TableCell className="text-right hidden md:table-cell">{user.dialogue_count}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

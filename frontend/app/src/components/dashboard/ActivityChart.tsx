@@ -24,7 +24,7 @@ export function ActivityChart({ data, period, onPeriodChange }: ActivityChartPro
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle>Activity Overview</CardTitle>
           <Tabs value={period} onValueChange={(v) => onPeriodChange(v as Period)}>
             <TabsList>
@@ -35,8 +35,8 @@ export function ActivityChart({ data, period, onPeriodChange }: ActivityChartPro
           </Tabs>
         </div>
       </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={350}>
+      <CardContent className="px-2 sm:px-6">
+        <ResponsiveContainer width="100%" height={300} className="sm:h-[350px]">
           <AreaChart data={formattedData}>
             <defs>
               <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">

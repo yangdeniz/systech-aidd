@@ -15,18 +15,18 @@ export function MetricCard({ title, value, change_percent, description }: Metric
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardDescription>{title}</CardDescription>
-        <CardTitle className="text-4xl">{value}</CardTitle>
+        <CardDescription className="text-xs sm:text-sm">{title}</CardDescription>
+        <CardTitle className="text-3xl sm:text-4xl">{value}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flex items-center gap-2">
           {isPositive ? (
-            <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
+            <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-green-600 dark:text-green-400" />
           ) : (
-            <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />
+            <TrendingDown className="h-3 w-3 sm:h-4 sm:w-4 text-red-600 dark:text-red-400" />
           )}
           <span
-            className={`text-sm font-medium ${
+            className={`text-xs sm:text-sm font-medium ${
               isPositive ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
             }`}
           >
@@ -34,7 +34,7 @@ export function MetricCard({ title, value, change_percent, description }: Metric
             {change_percent}%
           </span>
         </div>
-        <p className="text-xs text-muted-foreground mt-1">{description}</p>
+        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{description}</p>
       </CardContent>
     </Card>
   );

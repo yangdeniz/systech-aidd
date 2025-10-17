@@ -37,10 +37,10 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-background">
-      <div className="container mx-auto p-4 md:p-8 space-y-8">
+      <div className="container mx-auto p-4 md:p-6 lg:p-8 space-y-6 md:space-y-8">
         {/* Header with Title and Theme Toggle */}
-        <header className="flex items-center justify-between">
-          <h1 className="text-4xl font-bold">Dashboard</h1>
+        <header className="flex items-center justify-between gap-4">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold">Dashboard</h1>
           <ThemeToggle />
         </header>
 
