@@ -1,3 +1,4 @@
+import os
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -9,6 +10,9 @@ from src.bot.dialogue_manager import DialogueManager
 from src.bot.interfaces import DialogueStorage, LLMProvider, MediaProvider
 from src.bot.message_handler import MessageHandler
 from src.bot.models import Base
+
+# Отключаем Ryuk для Windows, чтобы избежать проблем с портами
+os.environ["TESTCONTAINERS_RYUK_DISABLED"] = "true"
 
 
 @pytest.fixture(scope="session")

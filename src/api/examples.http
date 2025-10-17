@@ -1,0 +1,57 @@
+### HomeGuru Stats API - Examples
+### Примеры запросов к API для тестирования
+
+### 1. Root endpoint - проверка работоспособности
+GET http://localhost:8000/
+Accept: application/json
+
+###
+
+### 2. Health check
+GET http://localhost:8000/health
+Accept: application/json
+
+###
+
+### 3. Get stats for last week (default)
+GET http://localhost:8000/stats
+Accept: application/json
+
+###
+
+### 4. Get stats for last day (24 hours)
+GET http://localhost:8000/stats?period=day
+Accept: application/json
+
+###
+
+### 5. Get stats for last week (7 days)
+GET http://localhost:8000/stats?period=week
+Accept: application/json
+
+###
+
+### 6. Get stats for last month (30 days)
+GET http://localhost:8000/stats?period=month
+Accept: application/json
+
+###
+
+### 7. Invalid period (should return 422 error)
+GET http://localhost:8000/stats?period=invalid
+Accept: application/json
+
+###
+
+### 8. OpenAPI schema
+GET http://localhost:8000/openapi.json
+Accept: application/json
+
+###
+
+### 9. API Documentation (Swagger UI)
+### Open in browser: http://localhost:8000/docs
+
+### 10. Alternative API Documentation (ReDoc)
+### Open in browser: http://localhost:8000/redoc
+
