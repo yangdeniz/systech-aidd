@@ -17,6 +17,36 @@ const apiClient = axios.create({
   },
 });
 
+// Request interceptor: Add auth token to all requests
+apiClient.interceptors.request.use(
+  (config) => {
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("auth_token");
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Response interceptor: Handle 401 errors (unauthorized)
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Token expired or invalid, clear auth and redirect to login
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("auth_user");
+        window.location.href = "/login";
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Stats API
 export async function getStats(period: Period): Promise<StatsResponse> {
   const response = await apiClient.get<StatsResponse>("/stats", {
@@ -36,17 +66,13 @@ export async function sendChatMessage(
   return response.data;
 }
 
-export async function getChatHistory(
-  sessionId: string,
-): Promise<ChatMessage[]> {
-  const response = await apiClient.get<ChatMessage[]>("/api/chat/history", {
-    params: { session_id: sessionId },
-  });
+export async function getChatHistory(): Promise<ChatMessage[]> {
+  const response = await apiClient.get<ChatMessage[]>("/api/chat/history");
   return response.data;
 }
 
-export async function clearChatHistory(sessionId: string): Promise<void> {
-  await apiClient.post("/api/chat/clear", { session_id: sessionId });
+export async function clearChatHistory(): Promise<void> {
+  await apiClient.post("/api/chat/clear");
 }
 
 export async function authenticateAdmin(

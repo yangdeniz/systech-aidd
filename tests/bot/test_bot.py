@@ -45,15 +45,17 @@ async def test_cmd_role(telegram_bot, mock_message) -> None:
 
 
 @pytest.mark.asyncio
-async def test_cmd_reset(telegram_bot, dialogue_manager, mock_message) -> None:
+async def test_cmd_reset(telegram_bot, dialogue_manager, mock_message, test_users_mapping) -> None:
     """Тест команды /reset"""
+    user_id = test_users_mapping[12345]
+
     # Добавляем историю
-    await dialogue_manager.add_message(12345, "user", "test")
+    await dialogue_manager.add_message(user_id, "user", "test")
 
     await telegram_bot.cmd_reset(mock_message)
 
     # Проверяем что история очищена
-    history = await dialogue_manager.get_history(12345)
+    history = await dialogue_manager.get_history(user_id)
     assert len(history) == 0
     mock_message.answer.assert_called_once()
 
@@ -61,6 +63,7 @@ async def test_cmd_reset(telegram_bot, dialogue_manager, mock_message) -> None:
 @pytest.mark.asyncio
 async def test_handle_message_success(
     telegram_bot,
+    test_users_mapping,
     dialogue_manager,
     mock_llm_client,
     mock_message,
@@ -68,8 +71,11 @@ async def test_handle_message_success(
     """Тест успешной обработки сообщения"""
     await telegram_bot.handle_message(mock_message)
 
+    # Получаем внутренний user.id для telegram_id=12345
+    user_id = test_users_mapping[12345]
+
     # Проверяем что сообщение добавлено в историю
-    history = await dialogue_manager.get_history(12345)
+    history = await dialogue_manager.get_history(user_id)
     assert len(history) == 2  # user + assistant
 
     # Проверяем что LLM был вызван
@@ -157,7 +163,6 @@ async def test_handle_photo_without_caption(telegram_bot, message_handler_with_m
     """Тест обработки фото без подписи."""
     from unittest.mock import AsyncMock, Mock
 
-
     bot = TelegramBot(
         telegram_bot.bot.token,
         message_handler_with_media,
@@ -192,7 +197,6 @@ async def test_handle_photo_no_user(telegram_bot, message_handler_with_media) ->
     """Тест обработки фото без пользователя."""
     from unittest.mock import AsyncMock, Mock
 
-
     bot = TelegramBot(
         telegram_bot.bot.token,
         message_handler_with_media,
@@ -217,7 +221,6 @@ async def test_handle_photo_no_user(telegram_bot, message_handler_with_media) ->
 async def test_handle_photo_error(telegram_bot, message_handler_with_media) -> None:
     """Тест обработки ошибки при обработке фото."""
     from unittest.mock import AsyncMock, Mock
-
 
     # Arrange - message_handler выбросит ошибку
     message_handler_with_media.handle_photo_message = AsyncMock(
@@ -256,7 +259,6 @@ async def test_handle_voice(telegram_bot, message_handler_with_media) -> None:
     """Тест обработки голосового сообщения от пользователя."""
     from unittest.mock import AsyncMock, Mock
 
-
     bot = TelegramBot(
         telegram_bot.bot.token,
         message_handler_with_media,
@@ -291,7 +293,6 @@ async def test_handle_voice_no_user(telegram_bot, message_handler_with_media) ->
     """Тест обработки голосового сообщения без пользователя."""
     from unittest.mock import AsyncMock, Mock
 
-
     bot = TelegramBot(
         telegram_bot.bot.token,
         message_handler_with_media,
@@ -316,7 +317,6 @@ async def test_handle_voice_no_user(telegram_bot, message_handler_with_media) ->
 async def test_handle_voice_error(telegram_bot, message_handler_with_media) -> None:
     """Тест обработки ошибки при обработке голосового сообщения."""
     from unittest.mock import AsyncMock, Mock
-
 
     # Arrange - message_handler выбросит ошибку
     message_handler_with_media.handle_voice_message = AsyncMock(

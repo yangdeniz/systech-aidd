@@ -61,7 +61,7 @@ class TelegramBot:
         self.dp.message(lambda m: m.voice is not None)(self.handle_voice)
         self.dp.message()(self.handle_message)
 
-    async def _track_user(self, message: Message) -> None:
+    async def _track_user(self, message: Message) -> int | None:
         """
         Отследить пользователя в базе данных.
 
@@ -69,19 +69,23 @@ class TelegramBot:
 
         Args:
             message: Telegram сообщение с информацией о пользователе
+
+        Returns:
+            Внутренний user.id из базы данных или None, если пользователь не найден
         """
         if message.from_user is None:
-            return
+            return None
 
         async with self.session_factory() as session:
             user_repo = UserRepository(session)
-            await user_repo.get_or_create_user(
+            user = await user_repo.get_or_create_user(
                 telegram_id=message.from_user.id,
                 username=message.from_user.username,
                 first_name=message.from_user.first_name,
                 last_name=message.from_user.last_name,
                 language_code=message.from_user.language_code,
             )
+            return user.id
 
     async def cmd_start(self, message: Message) -> None:
         """Обработать команду /start."""
@@ -133,12 +137,14 @@ class TelegramBot:
         if message.from_user is None:
             return
 
-        # Отслеживаем пользователя
-        await self._track_user(message)
+        # Отслеживаем пользователя и получаем внутренний user.id
+        user_id = await self._track_user(message)
+        if user_id is None:
+            return
 
-        user_id = message.from_user.id
+        telegram_id = message.from_user.id
         username = message.from_user.username or "unknown"
-        logger.info(f"User {user_id} (@{username}) executed /reset command")
+        logger.info(f"User {telegram_id} (@{username}) executed /reset command")
 
         response = await self.command_handler.reset_dialogue(user_id)
         await message.answer(response)
@@ -148,10 +154,12 @@ class TelegramBot:
         if message.from_user is None or message.text is None:
             return
 
-        # Отслеживаем пользователя
-        await self._track_user(message)
+        # Отслеживаем пользователя и получаем внутренний user.id
+        user_id = await self._track_user(message)
+        if user_id is None:
+            return
 
-        user_id = message.from_user.id
+        telegram_id = message.from_user.id
         username = message.from_user.username or "unknown"
 
         try:
@@ -162,7 +170,7 @@ class TelegramBot:
             await message.answer(response)
 
         except Exception as e:
-            logger.error(f"Error handling message from user {user_id}: {e}", exc_info=True)
+            logger.error(f"Error handling message from user {telegram_id}: {e}", exc_info=True)
             await message.answer(
                 "Извините, произошла ошибка при обработке вашего сообщения. "
                 "Попробуйте еще раз или используйте /reset для очистки истории."
@@ -173,10 +181,12 @@ class TelegramBot:
         if message.from_user is None or message.photo is None:
             return
 
-        # Отслеживаем пользователя
-        await self._track_user(message)
+        # Отслеживаем пользователя и получаем внутренний user.id
+        user_id = await self._track_user(message)
+        if user_id is None:
+            return
 
-        user_id = message.from_user.id
+        telegram_id = message.from_user.id
         username = message.from_user.username or "unknown"
 
         # Получаем последнее фото (самого большого размера)
@@ -185,7 +195,7 @@ class TelegramBot:
         caption = message.caption
 
         logger.info(
-            f"User {user_id} (@{username}) sent photo: file_id={photo_file_id}, caption={caption}"
+            f"User {telegram_id} (@{username}) sent photo: file_id={photo_file_id}, caption={caption}"
         )
 
         try:
@@ -196,7 +206,7 @@ class TelegramBot:
             await message.answer(response)
 
         except Exception as e:
-            logger.error(f"Error handling photo from user {user_id}: {e}", exc_info=True)
+            logger.error(f"Error handling photo from user {telegram_id}: {e}", exc_info=True)
             await message.answer(
                 "Извините, произошла ошибка при обработке вашего изображения. "
                 "Попробуйте еще раз или используйте /reset для очистки истории."
@@ -207,15 +217,17 @@ class TelegramBot:
         if message.from_user is None or message.voice is None:
             return
 
-        # Отслеживаем пользователя
-        await self._track_user(message)
+        # Отслеживаем пользователя и получаем внутренний user.id
+        user_id = await self._track_user(message)
+        if user_id is None:
+            return
 
-        user_id = message.from_user.id
+        telegram_id = message.from_user.id
         username = message.from_user.username or "unknown"
 
         voice_file_id = message.voice.file_id
 
-        logger.info(f"User {user_id} (@{username}) sent voice: file_id={voice_file_id}")
+        logger.info(f"User {telegram_id} (@{username}) sent voice: file_id={voice_file_id}")
 
         try:
             # Делегируем обработку в MessageHandler
@@ -225,7 +237,7 @@ class TelegramBot:
             await message.answer(response)
 
         except Exception as e:
-            logger.error(f"Error handling voice from user {user_id}: {e}", exc_info=True)
+            logger.error(f"Error handling voice from user {telegram_id}: {e}", exc_info=True)
             await message.answer(
                 "Извините, произошла ошибка при обработке вашего голосового сообщения. "
                 "Попробуйте еще раз или используйте /reset для очистки истории."

@@ -4,18 +4,21 @@
 
 Таблица: users
 - id: INTEGER (primary key)
-- telegram_id: BIGINT (unique, ID пользователя в Telegram)
-- username: VARCHAR(255) (username в Telegram, может быть NULL)
+- user_type: ENUM ('telegram', 'web') (тип пользователя)
+- telegram_id: BIGINT (unique, ID пользователя в Telegram, NULL для web users)
+- username: VARCHAR(255) (username, может быть NULL)
 - first_name: VARCHAR(255) (имя пользователя, может быть NULL)
 - last_name: VARCHAR(255) (фамилия пользователя, может быть NULL)
 - language_code: VARCHAR(10) (код языка, может быть NULL)
+- role: ENUM ('user', 'administrator') (роль для web users, NULL для telegram)
 - first_seen: TIMESTAMP (дата первого взаимодействия)
 - last_seen: TIMESTAMP (дата последнего взаимодействия)
+- last_login: TIMESTAMP (последний логин для web users)
 - is_active: BOOLEAN (флаг активности пользователя)
 
 Таблица: messages
 - id: INTEGER (primary key)
-- user_id: BIGINT (foreign key → users.telegram_id)
+- user_id: BIGINT (foreign key → users.id)
 - role: VARCHAR(20) ("user" или "assistant")
 - content: JSONB (содержимое сообщения)
 - created_at: TIMESTAMP (время создания сообщения)
@@ -55,10 +58,10 @@
 SQL: SELECT COUNT(*) as total_users FROM users WHERE is_active = true
 
 Вопрос: "Покажи последние 10 сообщений"
-SQL: SELECT m.id, u.username, m.role, m.created_at, m.char_length FROM messages m JOIN users u ON m.user_id = u.telegram_id WHERE m.is_deleted = false ORDER BY m.created_at DESC LIMIT 10
+SQL: SELECT m.id, u.username, m.role, m.created_at, m.char_length FROM messages m JOIN users u ON m.user_id = u.id WHERE m.is_deleted = false ORDER BY m.created_at DESC LIMIT 10
 
 Вопрос: "Кто самый активный пользователь?"
-SQL: SELECT u.telegram_id, u.username, u.first_name, COUNT(m.id) as message_count FROM users u JOIN messages m ON u.telegram_id = m.user_id WHERE m.is_deleted = false AND u.is_active = true GROUP BY u.telegram_id, u.username, u.first_name ORDER BY message_count DESC LIMIT 1
+SQL: SELECT u.id, u.username, u.first_name, u.user_type, COUNT(m.id) as message_count FROM users u JOIN messages m ON u.id = m.user_id WHERE m.is_deleted = false AND u.is_active = true GROUP BY u.id, u.username, u.first_name, u.user_type ORDER BY message_count DESC LIMIT 1
 
 Вопрос: "Сколько сообщений было отправлено за последнюю неделю?"
 SQL: SELECT COUNT(*) as messages_last_week FROM messages WHERE is_deleted = false AND created_at >= NOW() - INTERVAL '7 days'
@@ -67,14 +70,14 @@ SQL: SELECT COUNT(*) as messages_last_week FROM messages WHERE is_deleted = fals
 SQL: SELECT DATE_TRUNC('day', created_at) as day, COUNT(*) as message_count FROM messages WHERE is_deleted = false AND created_at >= NOW() - INTERVAL '30 days' GROUP BY day ORDER BY day DESC
 
 Вопрос: "Топ-5 пользователей по количеству сообщений"
-SQL: SELECT u.telegram_id, u.username, u.first_name, COUNT(m.id) as message_count FROM users u JOIN messages m ON u.telegram_id = m.user_id WHERE m.is_deleted = false AND u.is_active = true GROUP BY u.telegram_id, u.username, u.first_name ORDER BY message_count DESC LIMIT 5
+SQL: SELECT u.id, u.username, u.first_name, u.user_type, COUNT(m.id) as message_count FROM users u JOIN messages m ON u.id = m.user_id WHERE m.is_deleted = false AND u.is_active = true GROUP BY u.id, u.username, u.first_name, u.user_type ORDER BY message_count DESC LIMIT 5
 
 ВАЖНО:
 - Если вопрос неясен или не связан с базой данных - верни NULL
 - Если вопрос требует данных вне схемы - верни NULL
 - Всегда фильтруй is_deleted = false для messages
 - Всегда учитывай is_active = true для users (если логично)
-- Используй JOIN для связи users и messages через telegram_id
+- Используй JOIN для связи users и messages через users.id (NOT telegram_id)
 
 Теперь преобразуй вопрос пользователя в SQL запрос:
 

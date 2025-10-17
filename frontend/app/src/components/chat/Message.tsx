@@ -20,10 +20,10 @@ export function Message({ message }: MessageProps) {
     >
       <div
         className={cn(
-          "max-w-[80%] rounded-lg px-4 py-2",
+          "max-w-[80%] rounded-2xl px-4 py-3 shadow-sm",
           isUser
-            ? "bg-primary text-primary-foreground"
-            : "bg-muted text-foreground",
+            ? "bg-primary/95 text-primary-foreground backdrop-blur-sm"
+            : "bg-muted/80 text-foreground backdrop-blur-sm border border-border/50",
         )}
       >
         <div className="whitespace-pre-wrap break-words">{message.content}</div>
@@ -45,7 +45,7 @@ export function Message({ message }: MessageProps) {
             </button>
 
             {sqlExpanded && (
-              <pre className="mt-2 p-3 rounded-md text-xs overflow-x-auto bg-muted">
+              <pre className="mt-2 p-3 rounded-lg text-xs overflow-x-auto bg-background/50 border border-border/30 backdrop-blur-sm">
                 <code>{message.sql_query}</code>
               </pre>
             )}

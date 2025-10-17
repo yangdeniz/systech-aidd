@@ -18,7 +18,6 @@ class ChatRequest(BaseModel):
     mode: Literal["normal", "admin"] = Field(
         "normal", description="Режим работы чата: normal или admin"
     )
-    session_id: str = Field(..., description="ID сессии для идентификации пользователя")
 
 
 class ChatResponse(BaseModel):
@@ -49,9 +48,3 @@ class AuthResponse(BaseModel):
 
     token: str = Field(..., description="JWT токен")
     expires_at: str = Field(..., description="Время истечения токена в ISO формате")
-
-
-class ClearHistoryRequest(BaseModel):
-    """Запрос на очистку истории чата."""
-
-    session_id: str = Field(..., description="ID сессии для очистки истории")

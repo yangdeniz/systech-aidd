@@ -564,12 +564,12 @@ class RealStatCollector:
         # Джойним с User чтобы получить username
         query = (
             select(
-                User.telegram_id,
+                User.id,
                 User.username,
                 subquery.c.message_count,
                 subquery.c.last_message_at,
             )
-            .join(subquery, User.telegram_id == subquery.c.user_id)
+            .join(subquery, User.id == subquery.c.user_id)
             .order_by(subquery.c.last_message_at.desc())
         )
 
@@ -580,7 +580,7 @@ class RealStatCollector:
         for row in rows:
             dialogues.append(
                 DialogueInfo(
-                    user_id=row.telegram_id,
+                    user_id=row.id,
                     username=row.username,
                     message_count=row.message_count,
                     last_message_at=row.last_message_at,
@@ -607,14 +607,14 @@ class RealStatCollector:
         # Также считаем количество "диалогов" (уникальных дней с активностью)
         query = (
             select(
-                User.telegram_id,
+                User.id,
                 User.username,
                 func.count(Message.id).label("total_messages"),
                 func.count(func.distinct(func.date(Message.created_at))).label("dialogue_count"),
             )
-            .join(Message, User.telegram_id == Message.user_id)
+            .join(Message, User.id == Message.user_id)
             .where(Message.is_deleted == False)  # noqa: E712
-            .group_by(User.telegram_id, User.username)
+            .group_by(User.id, User.username)
             .order_by(func.count(Message.id).desc())
             .limit(5)
         )
@@ -626,7 +626,7 @@ class RealStatCollector:
         for row in rows:
             users.append(
                 TopUser(
-                    user_id=row.telegram_id,
+                    user_id=row.id,
                     username=row.username,
                     total_messages=row.total_messages,
                     dialogue_count=row.dialogue_count,

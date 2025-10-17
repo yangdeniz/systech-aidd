@@ -252,21 +252,29 @@ SQL запрос: {sql_query}
         if not sql_upper.startswith("SELECT"):
             return False
 
-        # Запрещенные ключевые слова
-        forbidden_keywords = [
-            "INSERT",
-            "UPDATE",
-            "DELETE",
-            "DROP",
-            "ALTER",
-            "TRUNCATE",
-            "CREATE",
-            "GRANT",
-            "REVOKE",
+        # Запрещенные SQL команды (только как отдельные слова)
+        forbidden_patterns = [
+            r"\bINSERT\b",
+            r"\bUPDATE\b",
+            r"\bDELETE\b(?!\s+FROM)",  # DELETE без FROM (DML)
+            r"\bDROP\b",
+            r"\bALTER\b",
+            r"\bTRUNCATE\b",
+            r"\bCREATE\b",
+            r"\bGRANT\b",
+            r"\bREVOKE\b",
+            r"\bEXEC(?:UTE)?\b",
+            r"\b--",  # SQL комментарии могут быть использованы для injection
+            r"/\*",  # Многострочные комментарии
         ]
 
-        # Проверяем отсутствие запрещенных ключевых слов
-        return all(keyword not in sql_upper for keyword in forbidden_keywords)
+        # Проверяем отсутствие запрещенных паттернов
+        for pattern in forbidden_patterns:
+            if re.search(pattern, sql_upper):
+                logger.warning(f"SQL validation failed: found forbidden pattern '{pattern}'")
+                return False
+
+        return True
 
     async def _execute_sql_query(self, sql: str) -> list[dict[str, Any]]:
         """

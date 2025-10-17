@@ -25,19 +25,28 @@ def postgres_container():
 @pytest.fixture
 async def test_engine(postgres_container):
     """Создает тестовый PostgreSQL engine через testcontainers"""
+    from sqlalchemy import text
+
     # Конвертируем URL из psycopg2 в asyncpg
     database_url = postgres_container.get_connection_url().replace("psycopg2", "asyncpg")
     engine = create_async_engine(database_url, echo=False)
 
-    # Создаем таблицы
+    # Создаем enum'ы и таблицы
     async with engine.begin() as conn:
+        # Создаем enum'ы через raw SQL чтобы гарантировать правильные значения
+        await conn.execute(text("CREATE TYPE user_type_enum AS ENUM ('telegram', 'web')"))
+        await conn.execute(text("CREATE TYPE user_role_enum AS ENUM ('user', 'administrator')"))
+        # Создаем таблицы
         await conn.run_sync(Base.metadata.create_all)
 
     yield engine
 
-    # Очищаем таблицы после каждого теста
+    # Очищаем таблицы и enum'ы после каждого теста
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+        # Удаляем enum'ы
+        await conn.execute(text("DROP TYPE IF EXISTS user_role_enum CASCADE"))
+        await conn.execute(text("DROP TYPE IF EXISTS user_type_enum CASCADE"))
 
     await engine.dispose()
 
@@ -49,24 +58,37 @@ async def test_session_factory(test_engine):
 
 
 @pytest.fixture
-async def dialogue_manager(test_session_factory) -> DialogueStorage:
-    """Создает DialogueManager для тестов"""
-    # Создаем тестовых пользователей для предотвращения foreign key errors
+async def test_users_mapping(test_session_factory) -> dict[int, int]:
+    """
+    Создает тестовых пользователей и возвращает маппинг telegram_id -> user.id.
+
+    После миграции 22e3ac57861b внешний ключ messages.user_id ссылается на users.id,
+    а не на users.telegram_id, поэтому нужно использовать внутренний ID.
+    """
     from src.bot.repository import UserRepository
 
+    mapping = {}
     async with test_session_factory() as session:
         user_repo = UserRepository(session)
-        # Создаем несколько тестовых пользователей с распространенными ID
-        test_user_ids = [111, 123, 222, 456, 789, 12345]
-        for user_id in test_user_ids:
-            await user_repo.get_or_create_user(
-                telegram_id=user_id,
-                username=f"testuser{user_id}",
+        # Создаем несколько тестовых пользователей с распространенными telegram_id
+        test_telegram_ids = [111, 123, 222, 456, 789, 12345]
+        for telegram_id in test_telegram_ids:
+            user = await user_repo.get_or_create_user(
+                telegram_id=telegram_id,
+                username=f"testuser{telegram_id}",
                 first_name="Test",
                 last_name="User",
                 language_code="en",
             )
+            # Сохраняем маппинг telegram_id -> user.id
+            mapping[telegram_id] = user.id
 
+    return mapping
+
+
+@pytest.fixture
+async def dialogue_manager(test_session_factory, test_users_mapping) -> DialogueStorage:
+    """Создает DialogueManager для тестов с предсозданными пользователями"""
     return DialogueManager(session_factory=test_session_factory, max_history=20)
 
 

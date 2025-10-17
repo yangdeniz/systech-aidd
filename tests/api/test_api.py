@@ -9,6 +9,7 @@
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from src.api import dependencies
 from src.api.main import app
 
 
@@ -16,12 +17,27 @@ class TestStatsAPI:
     """Тесты для Stats API endpoints."""
 
     @pytest.fixture
-    async def client(self) -> AsyncClient:
-        """Создает тестовый async клиент FastAPI."""
+    async def client(self, test_session_factory, admin_user_token) -> AsyncClient:
+        """Создает тестовый async клиент FastAPI с админ-токеном."""
+
+        # Override dependency для использования тестовой БД
+        async def override_get_db_session():
+            async with test_session_factory() as session:
+                yield session
+
+        app.dependency_overrides[dependencies.get_db_session] = override_get_db_session
+
+        # Создаем клиент с авторизацией
         async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test", timeout=30.0
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            timeout=30.0,
+            headers={"Authorization": f"Bearer {admin_user_token}"},
         ) as client:
             yield client
+
+        # Очищаем overrides после теста
+        app.dependency_overrides.clear()
 
     async def test_root_endpoint(self, client: AsyncClient) -> None:
         """Тест корневого endpoint."""

@@ -16,7 +16,6 @@ export interface ChatResponse {
 export interface ChatRequest {
   message: string;
   mode: ChatMode;
-  session_id: string;
 }
 
 export interface AuthRequest {

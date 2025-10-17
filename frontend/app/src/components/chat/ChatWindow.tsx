@@ -10,7 +10,7 @@ import { useChatAuth } from "@/hooks/useChatAuth";
 import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AuthModal } from "./AuthModal";
 import { MessageList } from "./MessageList";
 import { ModeToggle } from "./ModeToggle";
@@ -18,9 +18,11 @@ import { ModeToggle } from "./ModeToggle";
 interface ChatWindowProps {
   isOpen: boolean;
   onClose: () => void;
+  fullScreen?: boolean;
+  initialMode?: "normal" | "admin";
 }
 
-export function ChatWindow({ isOpen, onClose }: ChatWindowProps) {
+export function ChatWindow({ isOpen, onClose, fullScreen = false, initialMode = "normal" }: ChatWindowProps) {
   const [message, setMessage] = useState("");
   const [showAuthModal, setShowAuthModal] = useState(false);
   const { theme } = useTheme();
@@ -33,6 +35,13 @@ export function ChatWindow({ isOpen, onClose }: ChatWindowProps) {
     isLoading,
     isLoadingHistory,
   } = useChat();
+
+  // Set initial mode on mount
+  useEffect(() => {
+    if (initialMode && mode !== initialMode) {
+      setMode(initialMode);
+    }
+  }, [initialMode, setMode, mode]);
 
   const { isAuthenticated, authenticate, isAuthenticating, authError } =
     useChatAuth();
@@ -68,39 +77,43 @@ export function ChatWindow({ isOpen, onClose }: ChatWindowProps) {
       {/* Chat Window */}
       <div
         className={cn(
-          "fixed bottom-20 right-4 z-50",
-          "w-[400px] h-[600px]",
-          "md:w-[400px] md:h-[600px]",
-          "max-md:w-[calc(100vw-2rem)] max-md:h-[calc(100vh-8rem)]",
-          "border border-border rounded-lg shadow-2xl",
           "flex flex-col",
-          "animate-in slide-in-from-bottom-4 duration-300",
+          fullScreen
+            ? "w-full h-full max-w-4xl mx-auto bg-background"
+            : "fixed bottom-20 right-4 z-50 w-[400px] h-[600px] md:w-[400px] md:h-[600px] max-md:w-[calc(100vw-2rem)] max-md:h-[calc(100vh-8rem)] border border-border rounded-lg shadow-2xl animate-in slide-in-from-bottom-4 duration-300",
         )}
-        style={{
-          backgroundColor: theme === "dark" ? "hsl(222.2 84% 4.9%)" : "white",
-        }}
+        style={
+          fullScreen
+            ? undefined
+            : {
+                backgroundColor:
+                  theme === "dark" ? "hsl(222.2 84% 4.9%)" : "white",
+              }
+        }
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border">
-          <div className="flex items-center gap-3">
-            <h3 className="font-semibold">Chat</h3>
-            <ModeToggle
-              mode={mode}
-              onModeChange={handleModeChange}
-              isAuthenticated={isAuthenticated}
-              onAuthRequired={() => setShowAuthModal(true)}
-            />
+        {/* Header - only for floating mode */}
+        {!fullScreen && (
+          <div className="flex items-center justify-between p-4 border-b border-border">
+            <div className="flex items-center gap-3">
+              <h3 className="font-semibold">Chat</h3>
+              <ModeToggle
+                mode={mode}
+                onModeChange={handleModeChange}
+                isAuthenticated={isAuthenticated}
+                onAuthRequired={() => setShowAuthModal(true)}
+              />
+            </div>
+            <button
+              onClick={onClose}
+              className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            >
+              <X size={20} />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-          >
-            <X size={20} />
-          </button>
-        </div>
+        )}
 
-        {/* Messages */}
-        <div className="flex-1 overflow-hidden">
+        {/* Messages - Scrollable area */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
           <MessageList
             messages={messages}
             isLoading={isLoading}
@@ -108,8 +121,11 @@ export function ChatWindow({ isOpen, onClose }: ChatWindowProps) {
           />
         </div>
 
-        {/* Input */}
-        <div className="p-4 border-t border-border">
+        {/* Input - Fixed at bottom */}
+        <div className={cn(
+          "p-4 border-t border-border flex-shrink-0",
+          fullScreen && "bg-background"
+        )}>
           <ChatInput
             value={message}
             onChange={(e) => setMessage(e.target.value)}

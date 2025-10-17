@@ -1,8 +1,10 @@
 """
 Тесты для Chat API endpoints.
 
-Тестируем все chat endpoints: аутентификацию, отправку сообщений,
+Тестируем все chat endpoints: отправку сообщений,
 получение истории и очистку истории.
+
+Все эндпоинты теперь требуют JWT авторизации.
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -24,50 +26,15 @@ def mock_chat_service():
 
 
 @pytest.fixture
-def client_with_chat(mock_chat_service):
-    """Test client с включенным chat service."""
+def client_with_chat(mock_chat_service, admin_user_token):
+    """Test client с включенным chat service и авторизацией."""
     from src.api.main import app
 
     with patch("src.api.main.chat_service", mock_chat_service):
         client = TestClient(app)
+        # Добавляем токен в заголовки по умолчанию
+        client.headers = {"Authorization": f"Bearer {admin_user_token}"}
         yield client
-
-
-class TestAuthEndpoint:
-    """Тесты для /api/chat/auth endpoint."""
-
-    def test_auth_with_correct_password(self, client_with_chat):
-        """Тестируем аутентификацию с корректным паролем."""
-        response = client_with_chat.post(
-            "/api/chat/auth",
-            json={"password": "admin123"},  # default ADMIN_PASSWORD
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert "token" in data
-        assert "expires_at" in data
-        assert len(data["token"]) > 0
-
-    def test_auth_with_incorrect_password(self, client_with_chat):
-        """Тестируем отклонение неверного пароля."""
-        response = client_with_chat.post("/api/chat/auth", json={"password": "wrong_password"})
-
-        assert response.status_code == 401
-        assert "invalid" in response.json()["detail"].lower()
-
-    def test_auth_with_empty_password(self, client_with_chat):
-        """Тестируем отклонение пустого пароля."""
-        response = client_with_chat.post("/api/chat/auth", json={"password": ""})
-
-        # Pydantic валидация отклоняет пустую строку (min_length=1)
-        assert response.status_code == 422
-
-    def test_auth_missing_password_field(self, client_with_chat):
-        """Тестируем ошибку при отсутствии поля password."""
-        response = client_with_chat.post("/api/chat/auth", json={})
-
-        assert response.status_code == 422  # Validation error
 
 
 class TestChatMessageEndpoint:
@@ -79,7 +46,7 @@ class TestChatMessageEndpoint:
 
         response = client_with_chat.post(
             "/api/chat/message",
-            json={"message": "Hello", "mode": "normal", "session_id": "test-session-123"},
+            json={"message": "Hello", "mode": "normal"},
         )
 
         assert response.status_code == 200
@@ -101,7 +68,7 @@ class TestChatMessageEndpoint:
 
         response = client_with_chat.post(
             "/api/chat/message",
-            json={"message": "How many users?", "mode": "admin", "session_id": "test-session-456"},
+            json={"message": "How many users?", "mode": "admin"},
         )
 
         assert response.status_code == 200
@@ -114,7 +81,7 @@ class TestChatMessageEndpoint:
         """Тестируем отправку пустого сообщения (валидация)."""
         response = client_with_chat.post(
             "/api/chat/message",
-            json={"message": "", "mode": "normal", "session_id": "test-session-789"},
+            json={"message": "", "mode": "normal"},
         )
 
         # Pydantic должен отклонить пустую строку из-за min_length=1
@@ -124,16 +91,17 @@ class TestChatMessageEndpoint:
         """Тестируем отправку с невалидным режимом."""
         response = client_with_chat.post(
             "/api/chat/message",
-            json={"message": "Hello", "mode": "invalid_mode", "session_id": "test-session"},
+            json={"message": "Hello", "mode": "invalid_mode"},
         )
 
         # Pydantic должен отклонить невалидный Literal
         assert response.status_code == 422
 
     def test_send_message_missing_required_fields(self, client_with_chat):
-        """Тестируем отправку без обязательных полей."""
-        response = client_with_chat.post("/api/chat/message", json={"message": "Hello"})
+        """Тестируем отправку без обязательных полей (только mode опциональный)."""
+        response = client_with_chat.post("/api/chat/message", json={})
 
+        # Должна быть ошибка валидации, т.к. message обязателен
         assert response.status_code == 422
 
     def test_send_message_when_chat_service_unavailable(self, client_with_chat):
@@ -141,7 +109,7 @@ class TestChatMessageEndpoint:
         with patch("src.api.main.chat_service", None):
             response = client_with_chat.post(
                 "/api/chat/message",
-                json={"message": "Hello", "mode": "normal", "session_id": "test"},
+                json={"message": "Hello", "mode": "normal"},
             )
 
             assert response.status_code == 503
@@ -153,7 +121,7 @@ class TestChatMessageEndpoint:
 
         response = client_with_chat.post(
             "/api/chat/message",
-            json={"message": "Hello", "mode": "normal", "session_id": "test"},
+            json={"message": "Hello", "mode": "normal"},
         )
 
         assert response.status_code == 500
@@ -167,7 +135,7 @@ class TestChatHistoryEndpoint:
         """Тестируем получение пустой истории."""
         mock_chat_service.dialogue_manager.get_history.return_value = []
 
-        response = client_with_chat.get("/api/chat/history?session_id=test-session")
+        response = client_with_chat.get("/api/chat/history")
 
         assert response.status_code == 200
         data = response.json()
@@ -184,7 +152,7 @@ class TestChatHistoryEndpoint:
         ]
         mock_chat_service.dialogue_manager.get_history.return_value = mock_history
 
-        response = client_with_chat.get("/api/chat/history?session_id=test-session")
+        response = client_with_chat.get("/api/chat/history")
 
         assert response.status_code == 200
         data = response.json()
@@ -193,16 +161,10 @@ class TestChatHistoryEndpoint:
         assert data[0]["content"] == "Hello"
         assert "timestamp" in data[0]
 
-    def test_get_history_missing_session_id(self, client_with_chat):
-        """Тестируем ошибку при отсутствии session_id."""
-        response = client_with_chat.get("/api/chat/history")
-
-        assert response.status_code == 422
-
     def test_get_history_when_chat_service_unavailable(self, client_with_chat):
         """Тестируем ошибку когда chat service недоступен."""
         with patch("src.api.main.chat_service", None):
-            response = client_with_chat.get("/api/chat/history?session_id=test")
+            response = client_with_chat.get("/api/chat/history")
 
             assert response.status_code == 503
 
@@ -210,7 +172,7 @@ class TestChatHistoryEndpoint:
         """Тестируем обработку ошибки при получении истории."""
         mock_chat_service.dialogue_manager.get_history.side_effect = Exception("DB error")
 
-        response = client_with_chat.get("/api/chat/history?session_id=test")
+        response = client_with_chat.get("/api/chat/history")
 
         assert response.status_code == 500
 
@@ -220,26 +182,19 @@ class TestClearHistoryEndpoint:
 
     def test_clear_history_success(self, client_with_chat, mock_chat_service):
         """Тестируем успешную очистку истории."""
-        response = client_with_chat.post("/api/chat/clear", json={"session_id": "test-session"})
+        response = client_with_chat.post("/api/chat/clear")
 
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "history cleared"
-        assert data["session_id"] == "test-session"
 
         # Проверяем что метод был вызван
         mock_chat_service.dialogue_manager.clear_history.assert_called_once()
 
-    def test_clear_history_missing_session_id(self, client_with_chat):
-        """Тестируем ошибку при отсутствии session_id."""
-        response = client_with_chat.post("/api/chat/clear", json={})
-
-        assert response.status_code == 422
-
     def test_clear_history_when_chat_service_unavailable(self, client_with_chat):
         """Тестируем ошибку когда chat service недоступен."""
         with patch("src.api.main.chat_service", None):
-            response = client_with_chat.post("/api/chat/clear", json={"session_id": "test"})
+            response = client_with_chat.post("/api/chat/clear")
 
             assert response.status_code == 503
 
@@ -247,47 +202,6 @@ class TestClearHistoryEndpoint:
         """Тестируем обработку ошибки при очистке истории."""
         mock_chat_service.dialogue_manager.clear_history.side_effect = Exception("DB error")
 
-        response = client_with_chat.post("/api/chat/clear", json={"session_id": "test"})
+        response = client_with_chat.post("/api/chat/clear")
 
         assert response.status_code == 500
-
-
-class TestSessionIdMapping:
-    """Тесты для маппинга session_id → user_id."""
-
-    def test_consistent_user_id_for_session(self, client_with_chat, mock_chat_service):
-        """Тестируем что один session_id всегда получает один user_id."""
-        session_id = "consistent-session"
-
-        # Отправляем несколько сообщений
-        for i in range(3):
-            client_with_chat.post(
-                "/api/chat/message",
-                json={"message": f"Message {i}", "mode": "normal", "session_id": session_id},
-            )
-
-        # Проверяем что все вызовы использовали один user_id
-        calls = mock_chat_service.process_message.call_args_list
-        user_ids = [call[1]["user_id"] for call in calls]
-
-        # Все user_id должны быть одинаковыми
-        assert len(set(user_ids)) == 1
-        # И должны быть отрицательными (веб-пользователи)
-        assert user_ids[0] < 0
-
-    def test_different_user_ids_for_different_sessions(self, client_with_chat, mock_chat_service):
-        """Тестируем что разные session_id получают разные user_id."""
-        session_ids = ["session-1", "session-2", "session-3"]
-
-        for session_id in session_ids:
-            client_with_chat.post(
-                "/api/chat/message",
-                json={"message": "Test", "mode": "normal", "session_id": session_id},
-            )
-
-        # Проверяем что все вызовы использовали разные user_id
-        calls = mock_chat_service.process_message.call_args_list
-        user_ids = [call[1]["user_id"] for call in calls]
-
-        # Все user_id должны быть уникальными
-        assert len(set(user_ids)) == 3

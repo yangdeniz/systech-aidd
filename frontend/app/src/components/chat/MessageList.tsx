@@ -2,7 +2,6 @@
 
 import type { ChatMessage } from "@/types/chat";
 import { Loader2 } from "lucide-react";
-import { useTheme } from "next-themes";
 import { useEffect, useRef } from "react";
 import { Message } from "./Message";
 
@@ -18,11 +17,6 @@ export function MessageList({
   isLoadingHistory,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
-  const { theme } = useTheme();
-  
-  const bgStyle = {
-    backgroundColor: theme === "dark" ? "hsl(217.2 32.6% 17.5%)" : "hsl(210 40% 96.1%)",
-  };
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -31,7 +25,7 @@ export function MessageList({
 
   if (isLoadingHistory) {
     return (
-      <div className="flex items-center justify-center h-full" style={bgStyle}>
+      <div className="flex items-center justify-center h-full">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
     );
@@ -39,11 +33,11 @@ export function MessageList({
 
   if (messages.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-muted-foreground" style={bgStyle}>
+      <div className="flex items-center justify-center h-full text-muted-foreground">
         <div className="text-center">
           <p className="text-lg font-medium">Начните диалог</p>
           <p className="text-sm mt-1">
-            Задайте вопрос или переключитесь в админ режим для статистики
+            Задайте вопрос о доме и умных устройствах
           </p>
         </div>
       </div>
@@ -51,7 +45,7 @@ export function MessageList({
   }
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto px-4 py-4" style={bgStyle}>
+    <div className="flex flex-col h-full px-4 py-4">
       {messages.map((message, index) => (
         <Message key={index} message={message} />
       ))}
