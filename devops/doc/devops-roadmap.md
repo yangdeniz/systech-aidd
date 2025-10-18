@@ -30,7 +30,7 @@
 | Код | Название | Статус | План спринта |
 |-----|----------|--------|--------------|
 | **D-Sprint-0** | Basic Docker Setup | ✅ Completed | [📋 D-Sprint-0 Plan](plans/d0-basic-docker-setup.md) |
-| **D-Sprint-1** | Build & Publish | ⏳ Pending | *TBD* |
+| **D-Sprint-1** | Build & Publish | 🚧 In Progress | [📋 D-Sprint-1 Plan](plans/d1-build-publish.md) |
 | **D-Sprint-2** | Развертывание на сервер | ⏳ Pending | *TBD* |
 | **D-Sprint-3** | Auto Deploy | ⏳ Pending | *TBD* |
 
@@ -240,6 +240,7 @@
 
 | Дата | Версия | Изменения |
 |------|--------|-----------|
+| 2025-10-18 | 1.2 | D-Sprint-1 начат. GitHub Actions workflow, docker-compose.prod.yml, документация по GHCR, обновление README |
 | 2025-10-18 | 1.1 | D-Sprint-0 завершен. Контейнеризация всех сервисов, docker-compose с 4 сервисами, обновление README.md |
 | 2025-10-18 | 1.0 | Создание DevOps roadmap. Планирование спринтов D-Sprint-0 до D-Sprint-3 |
 

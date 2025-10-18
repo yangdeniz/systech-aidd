@@ -1,5 +1,7 @@
 # HomeGuru - ИИ-дизайнер интерьеров 🏠
 
+[![Build and Publish Docker Images](https://github.com/yangdeniz/systech-aidd/actions/workflows/build.yml/badge.svg)](https://github.com/yangdeniz/systech-aidd/actions/workflows/build.yml)
+
 Специализированный ИИ-ассистент для дизайна интерьеров на базе больших языковых моделей с Telegram-ботом и современным веб-интерфейсом.
 
 ## 📋 О проекте
@@ -296,7 +298,22 @@ pnpm test:coverage  # Тесты с покрытием
 
 ## 🐳 Запуск через Docker
 
-### Быстрый старт
+### Два варианта запуска
+
+**Вариант 1: Локальная сборка образов (Local Build)**
+- Собирает Docker образы из исходного кода на вашей машине
+- Используется для разработки и тестирования
+- Команда: `docker compose up --build`
+
+**Вариант 2: Готовые образы из GitHub Container Registry (Production Images)**
+- Использует предсобранные образы из ghcr.io
+- Быстрее - не требует сборки, только скачивание
+- Используется для production развертывания
+- Команда: `docker compose -f docker-compose.prod.yml up`
+
+---
+
+### Вариант 1: Локальная сборка (для разработки)
 
 Запустите все сервисы одной командой с помощью Docker Compose:
 
@@ -388,6 +405,107 @@ docker compose logs -f frontend  # Сборка Next.js
 - Docker Compose v2.0+
 - Минимум 4 GB RAM
 - Минимум 10 GB свободного места на диске
+
+---
+
+### Вариант 2: Production образы из GitHub Container Registry
+
+**Преимущества:**
+- ✅ Быстрое развертывание (без сборки, только pull)
+- ✅ Готовые протестированные образы
+- ✅ Идеально для production серверов
+- ✅ Автоматически обновляются при каждом push в main
+
+**Доступные образы:**
+
+```bash
+# Bot
+ghcr.io/yangdeniz/homeguru-bot:latest
+
+# API
+ghcr.io/yangdeniz/homeguru-api:latest
+
+# Frontend
+ghcr.io/yangdeniz/homeguru-frontend:latest
+```
+
+**Запуск:**
+
+1. **Обновите `docker-compose.prod.yml`**
+   
+   Замените `your-username` на ваш GitHub username в файле `docker-compose.prod.yml`:
+   ```yaml
+   image: ghcr.io/yangdeniz/homeguru-bot:latest
+   ```
+
+2. **Создайте файл `.env`** (аналогично Варианту 1)
+   ```bash
+   cp env.example .env
+   # Отредактируйте .env с вашими настройками
+   ```
+
+3. **Запустите через docker-compose.prod.yml:**
+   ```bash
+   docker compose -f docker-compose.prod.yml up
+   ```
+
+**Управление:**
+
+```bash
+# Запуск в фоновом режиме
+docker compose -f docker-compose.prod.yml up -d
+
+# Остановка
+docker compose -f docker-compose.prod.yml down
+
+# Обновление образов и перезапуск
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
+
+# Просмотр логов
+docker compose -f docker-compose.prod.yml logs -f
+```
+
+**Примечание:**  
+Если образы публичные (рекомендуется для open-source проектов), авторизация не требуется. Если образы приватные, выполните:
+```bash
+echo YOUR_GITHUB_PAT | docker login ghcr.io -u YOUR_USERNAME --password-stdin
+```
+
+---
+
+### 🐳 Docker образы в GitHub Container Registry
+
+Проект автоматически публикует Docker образы в GitHub Container Registry при каждом push в ветку `main`.
+
+**Registry:** `ghcr.io`
+
+**Образы:**
+- `ghcr.io/yangdeniz/homeguru-bot:latest` - Telegram бот
+- `ghcr.io/yangdeniz/homeguru-api:latest` - FastAPI сервис
+- `ghcr.io/yangdeniz/homeguru-frontend:latest` - Next.js веб-интерфейс
+
+**Теги:**
+- `latest` - последняя версия из main ветки
+- `sha-{commit}` - конкретный коммит (например, `sha-abc1234`)
+
+**CI/CD Pipeline:**
+- ✅ Автоматическая сборка через GitHub Actions
+- ✅ Параллельная сборка 3 образов (matrix strategy)
+- ✅ Кэширование Docker layers для ускорения
+- ✅ Проверка сборки в Pull Requests
+
+**Ручное скачивание образов:**
+
+```bash
+# Скачать образы
+docker pull ghcr.io/yangdeniz/homeguru-bot:latest
+docker pull ghcr.io/yangdeniz/homeguru-api:latest
+docker pull ghcr.io/yangdeniz/homeguru-frontend:latest
+
+# Запустить конкретный образ
+docker run --env-file .env ghcr.io/yangdeniz/homeguru-bot:latest
+```
 
 ## 🚀 Команды бота
 
