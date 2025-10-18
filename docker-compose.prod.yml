@@ -1,0 +1,90 @@
+# Docker Compose для запуска с образами из GitHub Container Registry
+# 
+# Использование:
+#   docker compose -f docker-compose.prod.yml up
+#
+# Требования:
+#   - Файл .env с переменными окружения (см. env.example)
+#   - Образы должны быть публичными или требуется docker login ghcr.io
+#
+# Примечание:
+#   Использует образы из GitHub Container Registry (yangdeniz/systech-aidd)
+
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: homeguru-postgres
+    environment:
+      POSTGRES_DB: homeguru
+      POSTGRES_USER: homeguru
+      POSTGRES_PASSWORD: homeguru_dev
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U homeguru"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - homeguru-network
+
+  bot:
+    image: ghcr.io/yangdeniz/homeguru-bot:latest
+    container_name: homeguru-bot
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://homeguru:homeguru_dev@postgres:5432/homeguru
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - homeguru-network
+    restart: unless-stopped
+
+  api:
+    image: ghcr.io/yangdeniz/homeguru-api:latest
+    container_name: homeguru-api
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://homeguru:homeguru_dev@postgres:5432/homeguru
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - homeguru-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    image: ghcr.io/yangdeniz/homeguru-frontend:latest
+    container_name: homeguru-frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    networks:
+      - homeguru-network
+    restart: unless-stopped
+
+networks:
+  homeguru-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+
