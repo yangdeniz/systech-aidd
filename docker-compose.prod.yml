@@ -54,7 +54,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://homeguru:homeguru_dev@postgres:5432/homeguru
     ports:
-      - "8000:8000"
+      - "8003:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -68,12 +68,16 @@ services:
       retries: 3
 
   frontend:
-    image: ghcr.io/yangdeniz/homeguru-frontend:latest
+    build:
+      context: ./frontend/app
+      dockerfile: ../../Dockerfile.frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://92.255.78.249:8003
     container_name: homeguru-frontend
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_API_URL: http://92.255.78.249:8003
     ports:
-      - "3000:3000"
+      - "3003:3000"
     depends_on:
       - api
     networks:
