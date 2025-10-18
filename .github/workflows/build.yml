@@ -3,8 +3,26 @@ name: Build and Publish Docker Images
 on:
   push:
     branches: [main]
+    paths:
+      - 'src/**'
+      - 'frontend/app/**'
+      - 'Dockerfile.*'
+      - 'docker-entrypoint-api.sh'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - 'migrations/**'
+      - 'alembic.ini'
   pull_request:
     branches: [main]
+    paths:
+      - 'src/**'
+      - 'frontend/app/**'
+      - 'Dockerfile.*'
+      - 'docker-entrypoint-api.sh'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - 'migrations/**'
+      - 'alembic.ini'
 
 permissions:
   contents: read
