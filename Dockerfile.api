@@ -1,0 +1,24 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Установка UV и curl для health check
+RUN pip install uv && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen
+
+COPY src/ ./src/
+COPY migrations/ ./migrations/
+COPY alembic.ini ./
+COPY docker-entrypoint-api.sh ./
+
+RUN chmod +x docker-entrypoint-api.sh
+
+EXPOSE 8000
+
+ENTRYPOINT ["./docker-entrypoint-api.sh"]
+

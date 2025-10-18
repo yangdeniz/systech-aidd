@@ -134,6 +134,10 @@ HomeGuru — это полноценная система для консуль�
 - [`docs/conventions.md`](docs/conventions.md) - соглашения и принципы разработки
 - [`docs/workflow.md`](docs/workflow.md) - процесс выполнения работ
 
+**Roadmaps по областям:**
+- [`frontend/doc/frontend-roadmap.md`](frontend/doc/frontend-roadmap.md) - roadmap Frontend разработки
+- [`devops/doc/devops-roadmap.md`](devops/doc/devops-roadmap.md) - roadmap DevOps процессов (Docker, CI/CD, Deploy)
+
 **Подпапки:**
 - [`docs/tasklists/`](docs/tasklists/) - тасклисты спринтов (Sprint-0, Sprint-1, ...)
 - [`docs/reports/`](docs/reports/) - отчеты о выполненных работах (tech debt)
@@ -289,6 +293,101 @@ pnpm test:coverage  # Тесты с покрытием
 - `make db-migrate` - применить миграции
 - `make db-revision MSG="description"` - создать новую миграцию
 - `make db-reset` - сбросить БД и применить миграции заново
+
+## 🐳 Запуск через Docker
+
+### Быстрый старт
+
+Запустите все сервисы одной командой с помощью Docker Compose:
+
+1. **Убедитесь, что установлены Docker и Docker Compose v2**
+   
+2. **Создайте файл `.env` на основе `env.example`**
+   ```bash
+   cp env.example .env
+   ```
+   
+   Заполните необходимые переменные в `.env` (минимально необходимые):
+   ```env
+   # Telegram Bot
+   TELEGRAM_BOT_TOKEN=ваш_telegram_токен
+   
+   # OpenRouter (мультимодальная модель)
+   OPENROUTER_API_KEY=ваш_openrouter_ключ
+   OPENROUTER_MODEL=anthropic/claude-3.5-sonnet
+   
+   # Web Auth Settings
+   JWT_SECRET_KEY=your-secret-key-change-in-production-min-32-chars
+   ADMIN_USERNAME=admin
+   ADMIN_PASSWORD=change_this_in_production
+   ```
+
+3. **Запустите все сервисы:**
+   ```bash
+   docker compose up
+   ```
+
+Сервисы будут доступны по адресам:
+- **Frontend:** http://localhost:3000
+- **API:** http://localhost:8000
+- **API Docs:** http://localhost:8000/docs
+- **PostgreSQL:** localhost:5432
+
+### Управление контейнерами
+
+**Запуск в фоновом режиме:**
+```bash
+docker compose up -d
+```
+
+**Остановка:**
+```bash
+docker compose down
+```
+
+**Просмотр логов:**
+```bash
+docker compose logs -f              # Все сервисы
+docker compose logs -f bot          # Только бот
+docker compose logs -f api          # Только API
+docker compose logs -f frontend     # Только frontend
+```
+
+**Пересборка образов:**
+```bash
+docker compose build
+docker compose up --build
+```
+
+**Очистка (с удалением данных БД):**
+```bash
+docker compose down -v
+```
+
+### Первый запуск
+
+При первом запуске:
+
+1. **API** автоматически выполнит миграции базы данных (занимает несколько секунд)
+2. **Frontend** выполнит production build (может занять 2-3 минуты при первой сборке)
+
+Следите за логами:
+
+```bash
+docker compose logs -f api       # Миграции БД
+docker compose logs -f frontend  # Сборка Next.js
+```
+
+Вы должны увидеть:
+- API: "Running database migrations..." → "Starting API server..."
+- Frontend: "Creating an optimized production build..." → "Ready - started server on 0.0.0.0:3000"
+
+### Требования
+
+- Docker 20.10+
+- Docker Compose v2.0+
+- Минимум 4 GB RAM
+- Минимум 10 GB свободного места на диске
 
 ## 🚀 Команды бота
 

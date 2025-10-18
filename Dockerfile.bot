@@ -1,0 +1,21 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Установка UV
+RUN pip install uv
+
+# Копирование файлов зависимостей
+COPY pyproject.toml uv.lock ./
+
+# Установка зависимостей
+RUN uv sync --frozen
+
+# Копирование исходного кода
+COPY src/ ./src/
+COPY migrations/ ./migrations/
+COPY alembic.ini ./
+
+# Команда запуска
+CMD ["uv", "run", "python", "-m", "src.bot.main"]
+

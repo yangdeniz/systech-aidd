@@ -1,0 +1,24 @@
+FROM node:20-slim
+
+# Установка pnpm
+RUN npm install -g pnpm
+
+WORKDIR /app
+
+# Копирование package.json
+COPY package.json pnpm-lock.yaml ./
+
+# Установка зависимостей
+RUN pnpm install --frozen-lockfile
+
+# Копирование остальных файлов
+COPY . ./
+
+# Сборка для production
+RUN pnpm run build
+
+EXPOSE 3000
+
+# Production режим
+CMD ["pnpm", "run", "start"]
+

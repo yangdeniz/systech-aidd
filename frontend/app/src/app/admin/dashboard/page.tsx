@@ -24,7 +24,7 @@ export default function AdminDashboardPage() {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-lg text-red-500">
-          Error loading stats. Make sure you're authenticated and the API is running.
+          Error loading stats. Make sure you&apos;re authenticated and the API is running.
         </div>
       </div>
     );

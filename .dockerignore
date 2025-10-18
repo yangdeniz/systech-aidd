@@ -1,0 +1,50 @@
+# Python cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.coverage
+.venv
+*.egg-info
+.mypy_cache
+.ruff_cache
+
+# Logs
+*.log
+bot.log
+
+# Environment
+.env
+.env.local
+
+# Node.js
+node_modules
+
+# Frontend
+frontend/
+
+# Tests and docs
+tests/
+docs/
+devops/
+
+# Git
+.git
+.gitignore
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+

@@ -17,6 +17,66 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - homeguru-network
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.bot
+    container_name: homeguru-bot
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://homeguru:homeguru_dev@postgres:5432/homeguru
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - homeguru-network
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: homeguru-api
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://homeguru:homeguru_dev@postgres:5432/homeguru
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - homeguru-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend/app
+      dockerfile: ../../Dockerfile.frontend
+    container_name: homeguru-frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    networks:
+      - homeguru-network
+    restart: unless-stopped
+
+networks:
+  homeguru-network:
+    driver: bridge
 
 volumes:
   postgres_data:
