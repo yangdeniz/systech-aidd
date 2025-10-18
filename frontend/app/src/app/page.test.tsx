@@ -1,4 +1,5 @@
 import { AuthProvider } from "@/contexts/AuthContext";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import { useRouter } from "next/navigation";
 import HomePage from "./page";
@@ -34,6 +35,23 @@ global.fetch = jest.fn();
 
 const mockPush = jest.fn();
 
+// Helper function to render with all required providers
+const renderWithProviders = (component: React.ReactElement) => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>{component}</AuthProvider>
+    </QueryClientProvider>
+  );
+};
+
 describe("HomePage", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -44,21 +62,13 @@ describe("HomePage", () => {
   });
 
   it("shows loading state initially", () => {
-    render(
-      <AuthProvider>
-        <HomePage />
-      </AuthProvider>
-    );
+    renderWithProviders(<HomePage />);
 
     expect(screen.getByText("Loading...")).toBeInTheDocument();
   });
 
   it("redirects to login when not authenticated", async () => {
-    render(
-      <AuthProvider>
-        <HomePage />
-      </AuthProvider>
-    );
+    renderWithProviders(<HomePage />);
 
     // Wait for the redirect to be called
     await waitFor(() => {
@@ -83,11 +93,7 @@ describe("HomePage", () => {
       json: async () => ({ valid: true }),
     });
 
-    render(
-      <AuthProvider>
-        <HomePage />
-      </AuthProvider>
-    );
+    renderWithProviders(<HomePage />);
 
     // Wait for the redirect to be called
     await waitFor(() => {
@@ -112,11 +118,7 @@ describe("HomePage", () => {
       json: async () => ({ valid: true }),
     });
 
-    render(
-      <AuthProvider>
-        <HomePage />
-      </AuthProvider>
-    );
+    renderWithProviders(<HomePage />);
 
     // Wait for the redirect to be called
     await waitFor(() => {

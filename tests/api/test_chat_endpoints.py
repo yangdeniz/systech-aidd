@@ -12,6 +12,22 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+from src.bot.models import User, UserRole, UserType
+
+
+# Для этих тестов нам не нужна настоящая БД, создаем простой мок
+@pytest.fixture
+def test_session_factory():
+    """Мок session factory без настоящей БД (для chat endpoint тестов)."""
+    mock_factory = MagicMock()
+
+    async def mock_session_context():
+        mock_session = MagicMock()
+        yield mock_session
+
+    mock_factory.return_value = mock_session_context()
+    return mock_factory
+
 
 # Для тестов мы будем патчить chat_service в main модуле
 @pytest.fixture
@@ -26,15 +42,47 @@ def mock_chat_service():
 
 
 @pytest.fixture
-def client_with_chat(mock_chat_service, admin_user_token):
-    """Test client с включенным chat service и авторизацией."""
-    from src.api.main import app
+def mock_user():
+    """Mock user для тестов."""
+    return User(
+        id=1,
+        telegram_id=None,
+        username="testuser",
+        first_name="Test User",
+        user_type=UserType.web,
+        role=UserRole.administrator,
+        is_active=True,
+    )
 
+
+@pytest.fixture
+def client_with_chat(mock_chat_service, mock_user, test_session_factory):
+    """Test client с включенным chat service и авторизацией."""
+    from src.api import dependencies
+    from src.api.main import app
+    from src.api.middleware import get_current_web_user
+
+    # Патчим chat_service и используем dependency_overrides для FastAPI dependencies
     with patch("src.api.main.chat_service", mock_chat_service):
+        # Override FastAPI dependencies
+        async def mock_get_current_web_user():
+            return mock_user
+
+        async def mock_get_db_session():
+            async with test_session_factory() as session:
+                yield session
+
+        app.dependency_overrides[get_current_web_user] = mock_get_current_web_user
+        app.dependency_overrides[dependencies.get_db_session] = mock_get_db_session
+
         client = TestClient(app)
-        # Добавляем токен в заголовки по умолчанию
-        client.headers = {"Authorization": f"Bearer {admin_user_token}"}
+        # Добавляем фиктивный токен в заголовки (проверка переопределена)
+        client.headers = {"Authorization": "Bearer fake_token_for_tests"}
+
         yield client
+
+        # Очищаем overrides после тестов
+        app.dependency_overrides.clear()
 
 
 class TestChatMessageEndpoint:
@@ -104,13 +152,32 @@ class TestChatMessageEndpoint:
         # Должна быть ошибка валидации, т.к. message обязателен
         assert response.status_code == 422
 
-    def test_send_message_when_chat_service_unavailable(self, client_with_chat):
+    def test_send_message_when_chat_service_unavailable(self, mock_user, test_session_factory):
         """Тестируем ошибку когда chat service недоступен."""
+        from src.api import dependencies
+        from src.api.main import app
+        from src.api.middleware import get_current_web_user
+
         with patch("src.api.main.chat_service", None):
-            response = client_with_chat.post(
+            # Override FastAPI dependencies
+            async def mock_get_current_web_user():
+                return mock_user
+
+            async def mock_get_db_session():
+                async with test_session_factory() as session:
+                    yield session
+
+            app.dependency_overrides[get_current_web_user] = mock_get_current_web_user
+            app.dependency_overrides[dependencies.get_db_session] = mock_get_db_session
+
+            client = TestClient(app)
+            client.headers = {"Authorization": "Bearer fake_token_for_tests"}
+            response = client.post(
                 "/api/chat/message",
                 json={"message": "Hello", "mode": "normal"},
             )
+
+            app.dependency_overrides.clear()
 
             assert response.status_code == 503
             assert "unavailable" in response.json()["detail"].lower()
@@ -161,10 +228,29 @@ class TestChatHistoryEndpoint:
         assert data[0]["content"] == "Hello"
         assert "timestamp" in data[0]
 
-    def test_get_history_when_chat_service_unavailable(self, client_with_chat):
+    def test_get_history_when_chat_service_unavailable(self, mock_user, test_session_factory):
         """Тестируем ошибку когда chat service недоступен."""
+        from src.api import dependencies
+        from src.api.main import app
+        from src.api.middleware import get_current_web_user
+
         with patch("src.api.main.chat_service", None):
-            response = client_with_chat.get("/api/chat/history")
+            # Override FastAPI dependencies
+            async def mock_get_current_web_user():
+                return mock_user
+
+            async def mock_get_db_session():
+                async with test_session_factory() as session:
+                    yield session
+
+            app.dependency_overrides[get_current_web_user] = mock_get_current_web_user
+            app.dependency_overrides[dependencies.get_db_session] = mock_get_db_session
+
+            client = TestClient(app)
+            client.headers = {"Authorization": "Bearer fake_token_for_tests"}
+            response = client.get("/api/chat/history")
+
+            app.dependency_overrides.clear()
 
             assert response.status_code == 503
 
@@ -191,10 +277,29 @@ class TestClearHistoryEndpoint:
         # Проверяем что метод был вызван
         mock_chat_service.dialogue_manager.clear_history.assert_called_once()
 
-    def test_clear_history_when_chat_service_unavailable(self, client_with_chat):
+    def test_clear_history_when_chat_service_unavailable(self, mock_user, test_session_factory):
         """Тестируем ошибку когда chat service недоступен."""
+        from src.api import dependencies
+        from src.api.main import app
+        from src.api.middleware import get_current_web_user
+
         with patch("src.api.main.chat_service", None):
-            response = client_with_chat.post("/api/chat/clear")
+            # Override FastAPI dependencies
+            async def mock_get_current_web_user():
+                return mock_user
+
+            async def mock_get_db_session():
+                async with test_session_factory() as session:
+                    yield session
+
+            app.dependency_overrides[get_current_web_user] = mock_get_current_web_user
+            app.dependency_overrides[dependencies.get_db_session] = mock_get_db_session
+
+            client = TestClient(app)
+            client.headers = {"Authorization": "Bearer fake_token_for_tests"}
+            response = client.post("/api/chat/clear")
+
+            app.dependency_overrides.clear()
 
             assert response.status_code == 503
 

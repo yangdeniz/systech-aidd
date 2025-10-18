@@ -617,7 +617,7 @@ async def clear_chat_history(
         # Очищаем историю через dialogue_manager для реального user_id
         await chat_service.dialogue_manager.clear_history(current_user.id)  # type: ignore[union-attr]
 
-        return {"status": "history cleared", "user_id": current_user.id}
+        return {"status": "history cleared", "user_id": str(current_user.id)}
 
     except Exception as e:
         logger.error("Error clearing chat history: %s", e, exc_info=True)
