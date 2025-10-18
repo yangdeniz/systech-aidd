@@ -20,8 +20,11 @@ scp -i <путь_к_SSH_ключу> docker-compose.prod.yml systech@92.255.78.24
 scp -i <путь_к_SSH_ключу> Dockerfile.frontend systech@92.255.78.249:/opt/systech/sunko/
 scp -i <путь_к_SSH_ключу> .env systech@92.255.78.249:/opt/systech/sunko/
 
-# Скопируйте директорию frontend
+# Скопируйте директорию frontend (важно сохранить структуру frontend/app)
 scp -i <путь_к_SSH_ключу> -r frontend systech@92.255.78.249:/opt/systech/sunko/
+
+# Проверьте на сервере, что путь frontend/app существует:
+# ssh -i <путь_к_ключу> systech@92.255.78.249 "ls -la /opt/systech/sunko/frontend/app"
 ```
 
 ### Шаг 2: Пересоберите Frontend на сервере

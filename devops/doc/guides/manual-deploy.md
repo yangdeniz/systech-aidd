@@ -262,9 +262,9 @@ docker compose -f docker-compose.prod.yml pull bot api postgres
 
 **Ожидаемое время:** 2-5 минут в зависимости от скорости интернет соединения.
 
-### 2. Соберите Frontend с правильным NEXT_PUBLIC_API_URL
+### 2. Соберите Frontend на сервере
 
-**Важно:** Frontend собирается локально, чтобы переменная `NEXT_PUBLIC_API_URL` была правильно установлена на этапе сборки.
+**Важно:** Frontend собирается с `NEXT_PUBLIC_API_URL=http://92.255.78.249:8003`, которая захардкожена в `Dockerfile.frontend`.
 
 ```bash
 docker compose -f docker-compose.prod.yml build frontend
@@ -275,7 +275,7 @@ docker compose -f docker-compose.prod.yml build frontend
 **Что происходит:**
 - Устанавливается Node.js и pnpm
 - Устанавливаются зависимости frontend
-- Собирается Next.js приложение с `NEXT_PUBLIC_API_URL=http://92.255.78.249:8003`
+- Собирается Next.js приложение с захардкоженным `NEXT_PUBLIC_API_URL=http://92.255.78.249:8003`
 
 ### 3. Проверьте созданные образы
 
@@ -576,30 +576,31 @@ POST http://localhost:8000/api/auth/login net::ERR_CONNECTION_REFUSED
 Frontend пытается обратиться к `http://localhost:8000` вместо `http://92.255.78.249:8003`. Это происходит потому, что `NEXT_PUBLIC_API_URL` - это build-time переменная Next.js, которая встраивается в код при сборке.
 
 **Решение:**
-Frontend необходимо пересобрать с правильным `NEXT_PUBLIC_API_URL`:
+Frontend необходимо пересобрать. API URL уже захардкожен в `Dockerfile.frontend` (`http://92.255.78.249:8003`):
 
-1. Убедитесь, что в `docker-compose.prod.yml` указан правильный build arg:
-```yaml
-frontend:
-  build:
-    context: ./frontend/app
-    dockerfile: ../../Dockerfile.frontend
-    args:
-      NEXT_PUBLIC_API_URL: http://92.255.78.249:8003
-```
-
-2. Пересоберите frontend контейнер:
+1. Пересоберите frontend контейнер:
 ```bash
 docker compose -f docker-compose.prod.yml build --no-cache frontend
 docker compose -f docker-compose.prod.yml up -d frontend
 ```
 
-3. Проверьте логи frontend:
+2. Проверьте логи frontend:
 ```bash
-docker compose -f docker-compose.prod.yml logs frontend | grep API
+docker compose -f docker-compose.prod.yml logs frontend
 ```
 
-4. Откройте DevTools в браузере (F12) → Network → проверьте, что запросы идут на `92.255.78.249:8003`
+Вы должны увидеть в логах сборки:
+```
+ENV NEXT_PUBLIC_API_URL=http://92.255.78.249:8003
+```
+
+3. Откройте DevTools в браузере (F12) → Network → проверьте, что запросы идут на `92.255.78.249:8003`
+
+**Если нужно изменить API URL:**
+Отредактируйте `Dockerfile.frontend` строку 18:
+```dockerfile
+ENV NEXT_PUBLIC_API_URL=http://ваш_новый_url:порт
+```
 
 ### Проблема: Миграции БД не выполнились
 

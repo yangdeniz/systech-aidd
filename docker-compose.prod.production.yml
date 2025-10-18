@@ -1,14 +1,10 @@
-# Docker Compose для запуска с образами из GitHub Container Registry
+# Docker Compose для production с готовым образом frontend
 # 
 # Использование:
-#   docker compose -f docker-compose.prod.yml up
+#   docker compose -f docker-compose.prod.production.yml up -d
 #
-# Требования:
-#   - Файл .env с переменными окружения (см. env.example)
-#   - Образы должны быть публичными или требуется docker login ghcr.io
-#
-# Примечание:
-#   Использует образы из GitHub Container Registry (yangdeniz/systech-aidd)
+# Образ frontend должен быть собран с правильным NEXT_PUBLIC_API_URL
+# и загружен в GHCR или Docker daemon
 
 version: '3.8'
 
@@ -68,10 +64,15 @@ services:
       retries: 3
 
   frontend:
-    build:
-      context: ./frontend/app
-      dockerfile: ../../Dockerfile.frontend
+    # Вариант 1: Из GHCR (если запушили туда)
+    # image: ghcr.io/yangdeniz/homeguru-frontend:production
+    
+    # Вариант 2: Локальный образ (если загрузили через docker load)
+    image: homeguru-frontend:production
+    
     container_name: homeguru-frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://92.255.78.249:8003
     ports:
       - "3003:3000"
     depends_on:

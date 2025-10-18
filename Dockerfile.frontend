@@ -1,8 +1,5 @@
 FROM node:20-slim
 
-# Build-time аргумент для API URL
-ARG NEXT_PUBLIC_API_URL=http://localhost:8000
-
 # Установка pnpm
 RUN npm install -g pnpm
 
@@ -17,8 +14,8 @@ RUN pnpm install --frozen-lockfile
 # Копирование остальных файлов
 COPY . ./
 
-# Сборка для production с передачей переменной окружения
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+# Сборка для production с захардкоженным API URL
+ENV NEXT_PUBLIC_API_URL=http://92.255.78.249:8003
 RUN pnpm run build
 
 EXPOSE 3000
